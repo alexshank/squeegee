@@ -40,6 +40,17 @@ These are set up before any implementation code is written, not after. An implem
   - A value that cannot be serialized to JSON is still recorded, in the marker form.
 - Property-based tests with `hypothesis` for the JSON round trip through the store are welcome but not required.
 
+## Frontend toolchain
+
+The UI lives in `frontend/` and builds into `src/squeegee/ui/static/`. It is a contributor-only toolchain; users install a wheel with the assets already built.
+
+- Vite for the build, React for the UI, TypeScript with `strict: true` and `noUncheckedIndexedAccess`. The typing discipline matches the Python side: no `any` in shared code, no unexplained `@ts-expect-error`.
+- Biome for both linting and formatting, chosen for the same reason as ruff: one fast tool, one config block, no ESLint and Prettier disagreeing about the same file.
+- Vitest with Testing Library for component tests. The tests that matter are the ones for real logic: the diff highlighting between adjacent stages, cursor pagination, and JSON tree rendering of awkward values. No coverage gate on the frontend; trivial presentational components do not need tests to hit a number.
+- No component library and no CSS framework. Plain CSS with custom properties for the palette, so light and dark are one variable block rather than two stylesheets.
+- Icons from `lucide-react`, imported one by one. No barrel imports, no icon font.
+- `src/squeegee/ui/static/` is gitignored. A Hatch build hook builds the frontend during a wheel build and fails the build if the output is missing, so a published wheel can never serve a 404 for its own UI.
+
 ## Pre-commit
 
 `.pre-commit-config.yaml` runs, in order, on every commit:
@@ -47,7 +58,8 @@ These are set up before any implementation code is written, not after. An implem
 1. `ruff check --fix`
 2. `ruff format`
 3. `mypy --strict`
-4. `check-yaml`, `check-toml`, `end-of-file-fixer`, `trailing-whitespace`, `check-merge-conflict`, `check-added-large-files`
+4. `biome check --write`, on `frontend/` only, skipped when Node is absent
+5. `check-yaml`, `check-toml`, `end-of-file-fixer`, `trailing-whitespace`, `check-merge-conflict`, `check-added-large-files`
 
 Tests are not in pre-commit; they run in CI and on demand. Hooks should stay fast enough that nobody is tempted to use `--no-verify`.
 
@@ -57,7 +69,8 @@ GitHub Actions, on push and pull request:
 
 - `lint`: ruff check, ruff format --check, mypy --strict.
 - `test`: pytest with coverage across the supported Python versions on Ubuntu, plus one macOS and one Windows job because SQLite paths and file locking differ.
-- `install`: verify `pip install .` and `uvx --from . squeegee --help` both work from a clean environment.
+- `frontend`: `biome ci`, `tsc --noEmit`, `vitest run`, and `vite build`.
+- `install`: verify `pip install .` and `uvx --from . squeegee --help` both work from a clean environment, and that the built wheel contains the UI assets.
 - Publishing to PyPI runs on tagged releases via trusted publishing. No API tokens in repository secrets.
 
 ## Practices

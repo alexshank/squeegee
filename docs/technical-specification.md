@@ -5,8 +5,8 @@
 - Package name on PyPI: `squeegee` (verified unclaimed as of 2026-09-18).
 - Build backend: `hatchling`. Source layout: `src/squeegee/`.
 - Minimum Python: 3.11.
-- Core install has zero third-party runtime dependencies, so `uvx squeegee` starts cold in well under a second.
-- Optional extra `squeegee[ui]` pulls in the web UI dependencies (FastAPI, Uvicorn).
+- Zero third-party runtime dependencies, including the UI, so `uvx squeegee` starts cold in well under a second and `uvx squeegee ui` needs nothing extra installed.
+- React is a build-time dependency only. The wheel ships the built UI assets; users never need Node. See [decisions/0002-react-ui-on-a-stdlib-server.md](decisions/0002-react-ui-on-a-stdlib-server.md).
 - Console entry point: `squeegee = "squeegee.cli:main"`.
 
 ## Package layout
@@ -25,9 +25,16 @@ src/squeegee/
         schema.sql     # table and trigger definitions
         sqlite.py      # append-only SQLite implementation
     cli.py             # argument parsing and subcommands
-    ui/                # optional extra; imports fail loudly if not installed
-        app.py         # FastAPI app, JSON endpoints over the store
-        static/        # single page HTML, CSS, JS
+    ui/
+        server.py      # ThreadingHTTPServer: static assets plus read-only JSON API
+        static/        # build output of frontend/, shipped in the wheel, gitignored in the repo
+```
+
+```
+frontend/              # React sources, built by Vite into src/squeegee/ui/static/
+    src/
+    index.html
+    package.json
 ```
 
 ## Public API
@@ -122,7 +129,7 @@ Terminal equivalents of the UI's two main screens, so the tool stays useful with
 
 ### `squeegee ui`
 
-Starts the local server, binds to `127.0.0.1` only, and prints the URL. If the `ui` extra is not installed it exits with a message naming the exact install command.
+Starts the local server, binds to `127.0.0.1` only, and prints the URL. Serves the built React assets and the read-only JSON API from one `ThreadingHTTPServer`, with one `sqlite3` connection per thread, each opened read-only through a `file:...?mode=ro` URI.
 
 ## Error handling
 

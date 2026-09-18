@@ -27,9 +27,9 @@ These are settled. Implementation agents should not revisit them without asking.
 1. Stage functions process **one record at a time**, not whole datasets. This is what makes per-record tracing possible in the UI.
 2. Pipeline order is **declaration order** in the user's script. No DAG, no explicit dependency graph.
 3. Supported data formats are **CSV and JSON only**. The reader/writer layer is pluggable so other formats can be added later.
-4. The core package has **no third-party runtime dependencies**. The web UI is an optional extra.
+4. The package has **no third-party runtime dependencies**, UI included. React is a build-time dependency only. See [decisions/0002-react-ui-on-a-stdlib-server.md](decisions/0002-react-ui-on-a-stdlib-server.md).
 5. The store is **SQLite**, not DuckDB. See [decisions/0001-sqlite-over-duckdb.md](decisions/0001-sqlite-over-duckdb.md).
 6. The storage layer is **append-only SQLite**. Nothing is ever updated or deleted.
-7. The UI is **read-only**. It explores and reviews past runs; it never triggers or edits a pipeline.
+7. The UI is **read-only**. It explores and reviews past runs; it never triggers or edits a pipeline. It is a **React app served by stdlib `http.server`**, with hand-written CSS and Lucide icons.
 8. Runs **fail fast**. The first stage exception aborts the run, after recording it. `--continue-on-error` is the opt-out.
 9. Strict typing is a rule for **this repository only**. User scripts need no annotations, and Squeegee never fails a run over one.

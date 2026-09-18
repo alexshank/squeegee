@@ -6,8 +6,10 @@ The UI is a local, read-only window onto the SQLite database. It answers three q
 
 - Launched with `squeegee ui`, bound to `127.0.0.1` only, no authentication, no external network calls.
 - Read-only. There are no buttons that write, re-run, edit, or delete. The server opens SQLite in read-only mode so this is structural, not just a UI choice.
-- Stack: FastAPI serving JSON endpoints plus a static single page. Installed as the `squeegee[ui]` extra so the core package stays dependency-free.
-- No build step. Plain HTML, CSS, and vanilla JavaScript served from `squeegee/ui/static/`. A developer debugging a CSV should not be waiting on npm.
+- Stack: a React single page application, built ahead of time, served by Python's standard library `http.server` alongside a small read-only JSON API. No FastAPI, no Uvicorn, no install extra; the package has no runtime dependencies at all.
+- Users never build anything. The wheel ships the built assets. Node is a contributor requirement only.
+- Components are hand-written with plain CSS. No component library, no CSS framework.
+- Icons come from Lucide, imported individually from `lucide-react` so the bundle stays tree-shaken. Icons are decorative support for a text label, never the only affordance.
 - Designed for a laptop screen at 1280px and up. Responsive down to tablet width; phone support is not a goal.
 
 ## Screens
@@ -39,7 +41,7 @@ The debugging screen. For one record: its source value at the top, then one pane
 
 For one stage in one run, a table of every field present in the outputs: field name, inferred type, non-null count, null count, distinct count, and, for numeric fields, min, max, mean, median, and sum. Selecting a field shows its distribution: a histogram for numeric fields, top values for categorical ones. A toggle compares the same field before and after the stage, which is the fastest way to confirm a transformation did what was intended.
 
-All statistics are computed with SQLite aggregates over `json_extract` on the stored JSON. No pandas, no in-memory dataframe.
+All statistics are computed with SQLite aggregates over `json_extract` on the stored JSON, server side. No pandas, no in-memory dataframe, and no shipping a whole run to the browser to be reduced there.
 
 ### 6. Run comparison (should-have, may land after v1)
 
@@ -62,8 +64,10 @@ All endpoints are read-only `GET`, return JSON, and are versioned under `/api`.
 
 Pagination is cursor-based on the primary key. Every list endpoint caps its page size so a large run cannot be turned into a multi-megabyte response by a query parameter.
 
+Routing, pagination, parameter parsing, and error responses are hand-written, since no framework validates them. Unknown paths under `/api` return 404 as JSON; any other path falls through to the static asset handler, which serves `index.html` so client-side routing works on a page refresh. Malformed parameters return 400 with a message naming the parameter.
+
 ## Visual direction
 
-Utilitarian and dense, closer to a debugger than a dashboard. Monospace for data values, a normal UI font for chrome. A restrained palette with one accent colour; status is carried by consistent colours for ok, dropped, and error, used identically on every screen. Dark and light both supported, following the system preference. JSON values are rendered in a collapsible tree, not as a wall of text.
+Utilitarian and dense, closer to a debugger than a dashboard. Monospace for data values, a normal UI font for chrome. A restrained palette with one accent colour; status is carried by consistent colours for ok, dropped, and error, used identically on every screen, and never by colour alone. Dark and light both supported through CSS custom properties, following the system preference. JSON values are rendered in a collapsible tree, not as a wall of text.
 
 Wireframes for each screen go in [ui-wireframes/](ui-wireframes/) and are the next deliverable after these specifications are approved.
