@@ -66,6 +66,21 @@ Pagination is cursor-based on the primary key. Every list endpoint caps its page
 
 Routing, pagination, parameter parsing, and error responses are hand-written, since no framework validates them. Unknown paths under `/api` return 404 as JSON; any other path falls through to the static asset handler, which serves `index.html` so client-side routing works on a page refresh. Malformed parameters return 400 with a message naming the parameter.
 
+## Hand-written server checklist
+
+Nothing here is exotic; all of it is what a framework would have handled. Each item is a required test case.
+
+- **MIME types are set explicitly at startup.** `mimetypes` consults the Windows registry, where `.js` is often mapped to `text/plain`, which makes the browser refuse the module scripts. Call `mimetypes.add_type` for `.js`, `.mjs`, `.css`, `.json`, `.svg`, and `.woff2` before serving anything.
+- **Static serving reuses `SimpleHTTPRequestHandler.translate_path`.** It already normalizes away `..` and absolute paths. Hand-rolled path joining is where directory traversal gets introduced.
+- **Unknown non-API paths serve `index.html`** with a 200, so a refresh on a client-side route works. Unknown paths under `/api` return 404 as JSON.
+- **`ThreadingHTTPServer` with `daemon_threads = True`**, so Ctrl-C exits immediately instead of waiting on open connections.
+- **One SQLite connection per thread**, held in thread-local storage, each opened read-only through a `file:...?mode=ro` URI. `sqlite3` connection objects are not shared across threads.
+- **Bind `127.0.0.1` explicitly**, never `0.0.0.0`. The UI has no authentication because it is unreachable from the network, and that has to stay true.
+- **A busy port exits with a clear message** naming the port and suggesting `--port`, rather than an `OSError` traceback.
+- **Query parameters are parsed and bounded in one place.** `limit` is an integer clamped to a maximum, `cursor` is an integer or absent, `status` is one of the three known values. A bad parameter returns 400 with a message naming it, never a 500.
+- **Every response sets `Content-Type` and `Content-Length`**, and errors are the same JSON envelope as successes so the client has one parsing path.
+- **No gzip.** Over loopback, for a bundle this size, it is not worth the code.
+
 ## Visual direction
 
 Utilitarian and dense, closer to a debugger than a dashboard. Monospace for data values, a normal UI font for chrome. A restrained palette with one accent colour; status is carried by consistent colours for ok, dropped, and error, used identically on every screen, and never by colour alone. Dark and light both supported through CSS custom properties, following the system preference. JSON values are rendered in a collapsible tree, not as a wall of text.
