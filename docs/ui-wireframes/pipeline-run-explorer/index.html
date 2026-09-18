@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pipeline Run Explorer — Wireframes</title>
+  <link rel="stylesheet" href="base.css">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles-opt1.css">
+  <link rel="stylesheet" href="styles-opt2.css">
+  <link rel="stylesheet" href="styles-opt3.css">
+  <link rel="stylesheet" href="styles-opt4.css">
+  <link rel="stylesheet" href="styles-opt5.css">
+</head>
+<body>
+
+<div class="completion-banner" id="completion-banner" style="display:none;">
+  ✦ Visual designs complete — all options now have Clean + Polished variants
+  <button onclick="this.parentElement.style.display='none'" style="float:right;background:none;border:none;cursor:pointer;font-size:16px;">×</button>
+</div>
+
+<div class="page-wrapper">
+
+  <div class="title-bar">
+    <span><span id="feature-name">Pipeline Run Explorer</span> — <span id="project-name">Squeegee</span></span>
+    <span class="rec">★ Recommended: Option <span id="rec-number">2</span></span>
+  </div>
+
+  <nav class="main-tabs">
+    <button class="tab-btn active" data-tab="option-1">1: Drill Down</button>
+    <button class="tab-btn" data-tab="option-2">2: Split View</button>
+    <button class="tab-btn" data-tab="option-3">3: Pipeline Funnel</button>
+    <button class="tab-btn" data-tab="option-4">4: Command Palette</button>
+    <button class="tab-btn" data-tab="option-5">5: Record Matrix</button>
+    <button class="tab-btn" data-tab="summary">Summary</button>
+  </nav>
+
+  <!-- ===== OPTION 1 ===== -->
+  <div class="option-panel active" id="option-1">
+    <h2>Option 1: <span class="opt-name">Drill Down</span></h2>
+    <p class="option-description">Hierarchical pages that mirror the data model: a run leads to a stage, a stage leads to a record.</p>
+    <div class="sub-tab-bar" id="frame-opt1-tabs">
+      <button class="sub-tab-btn active" data-variant="wireframe" data-frame="frame-opt1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 48 48"><defs><mask id="ipTsketch1"><g fill="#555" stroke="#fff" stroke-linejoin="round" stroke-width="4"><rect width="36" height="36" x="6" y="6" rx="3"/><path stroke-linecap="round" d="M18.6 16h10.8l3.6 4.706L24 32l-9-11.294z"/></g></mask></defs><path fill="currentColor" d="M0 0h48v48H0z" mask="url(#ipTsketch1)"/></svg>
+        <span class="sub-tab-label">Wireframe</span>
+      </button>
+      <button class="sub-tab-btn" data-variant="clean" data-frame="frame-opt1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 48 48"><defs><mask id="ipTpaint1"><g fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"><path d="m15.536 22.898l9.899 9.9m-9.899-9.9L7.05 31.383a7 7 0 1 0 9.9 9.9l8.485-8.486m-9.899 0l-4.243 4.243"/><path fill="#555" d="m25.435 32.797l14.907-6.432c2.688-1.16 3.809-4.379 2.086-6.745C38.264 13.903 32.65 8.89 28.51 5.823c-2.29-1.696-5.33-.64-6.46 1.975l-6.514 15.1z"/></g></mask></defs><path fill="currentColor" d="M0 0h48v48H0z" mask="url(#ipTpaint1)"/></svg>
+        <span class="sub-tab-label">Clean</span>
+      </button>
+      <button class="sub-tab-btn" data-variant="polished" data-frame="frame-opt1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 48 48"><defs><mask id="ipTdiamond1"><path fill="#555" stroke="#fff" stroke-width="4" d="M5.939 13.934L23.036 4.53a2 2 0 0 1 1.928 0l17.097 9.404a2 2 0 0 1 .683 2.888l-17.098 24.79a2 2 0 0 1-3.292 0L5.256 16.823a2 2 0 0 1 .683-2.888Z"/></mask></defs><path fill="currentColor" d="M0 0h48v48H0z" mask="url(#ipTdiamond1)"/></svg>
+        <span class="sub-tab-label">Polished</span>
+      </button>
+    </div>
+    <div class="browser-frame wireframe" id="frame-opt1">
+      <div class="browser-chrome">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <div class="browser-url">127.0.0.1:8765/runs/42</div>
+        <div class="browser-controls">─ □ ✕</div>
+      </div>
+      <div class="browser-content">
+        <div class="wf">
+  <div class="wf-crumb"><a href="#">runs</a> / <b>run 42</b></div>
+  <div class="wf-head">
+  <div><h3>Run 42 &middot; clean_orders.py</h3><div class="wf-sub">orders.csv &rarr; clean.csv &middot; 2026-09-18 14:02:11Z</div></div>
+  <div class="wf-sub">.squeegee/squeegee.db &middot; squeegee 0.1.0</div>
+</div>
+  <div class="wf-fail">
+  <b><span class="wf-marker">1</span>Run failed at stage 2 &middot; parse_amount &middot; record 4471</b>
+  <code>ValueError: could not convert string to float: 'n/a'</code>
+  <div class="wf-note">Fail fast is the default. 4,470 records were processed before the run stopped, and all of them are still here to review.</div>
+</div>
+  <div class="wf-kv">
+  <div><span>status</span><b>failed</b></div>
+  <div><span>python</span><b>3.12.4</b></div>
+  <div><span>script sha</span><b>9f2c1a&hellip;</b></div>
+  <div><span>options</span><b>--fail-fast</b></div>
+</div>
+  <div class="wf-counts">
+  <div><b>10,000</b><span>records in</span></div>
+  <div><b>0</b><span>records out</span></div>
+  <div><b>131</b><span>dropped</span></div>
+  <div><b>1</b><span>errored</span></div>
+  <div><b>2.8s</b><span>elapsed</span></div>
+  <div><b>5</b><span>stages</span></div>
+</div>
+  <div class="wf-controls"><b style="font-size:11px">Pipeline</b><div class="spacer"></div><span class="wf-sub">declaration order &middot; click a stage to open it</span></div>
+  <div class="wf-stage ">
+  <div class="pos">0</div>
+  <div><div class="nm">normalize_headers<span class="wf-marker">2</span></div><div class="ds">Lowercase and underscore every column name.</div><div class="wf-bar"><i style="width:100%"></i></div></div>
+  <div class="mt">10,000 in &middot; 10,000 ok &middot; 0 dropped &middot; 0 errored<br>median 38&micro;s &middot; total 412ms</div>
+</div>
+<div class="wf-stage ">
+  <div class="pos">1</div>
+  <div><div class="nm">drop_test_rows</div><div class="ds">Remove orders placed by the internal QA accounts.</div><div class="wf-bar"><i style="width:99%"></i><i class="drop" style="width:1.3%"></i></div></div>
+  <div class="mt">10,000 in &middot; 9,869 ok &middot; 131 dropped &middot; 0 errored<br>median 38&micro;s &middot; total 412ms</div>
+</div>
+<div class="wf-stage failed">
+  <div class="pos">2</div>
+  <div><div class="nm">parse_amount<span class="wf-marker">3</span></div><div class="ds">Convert the amount column from a currency string to cents.</div><div class="wf-bar"><i style="width:45%"></i><i class="drop" style="width:1%"></i></div></div>
+  <div class="mt">9,869 in &middot; 4,470 ok &middot; 0 dropped &middot; 1 errored<br>median 38&micro;s &middot; total 412ms</div>
+</div>
+<div class="wf-stage ">
+  <div class="pos">3</div>
+  <div><div class="nm">validate_email</div><div class="ds">Drop records whose email fails a basic shape check.</div><div class="wf-bar"></div></div>
+  <div class="mt">not reached<br>median 38&micro;s &middot; total 412ms</div>
+</div>
+<div class="wf-stage ">
+  <div class="pos">4</div>
+  <div><div class="nm">dedupe_by_id</div><div class="ds">Keep the first record for each order id.</div><div class="wf-bar"></div></div>
+  <div class="mt">not reached<br>median 38&micro;s &middot; total 412ms</div>
+</div>
+  <div class="wf-note"><span class="wf-marker">4</span>Stages 3 and 4 never ran, so they show no counts rather than zeros.</div>
+</div>
+      </div>
+    </div>
+    <div class="wf-annotations">
+      <h3>UX notes</h3><ul>
+<li><span class="wf-marker">1</span>A failed run leads with the failure: stage, record index, and exception on one line, with the partial results still reachable underneath.</li>
+<li><span class="wf-marker">2</span>Each stage card carries the same four counts in the same order everywhere in the UI: in, ok, dropped, errored.</li>
+<li><span class="wf-marker">3</span>The bar under each stage shows what proportion of records survived it, so a stage that silently eats most of the input is visible without reading numbers.</li>
+<li><span class="wf-marker">4</span>Stages that never ran are blank rather than zeroed, because zero processed and zero survived mean different things.</li>
+<li>Drill-down navigation: run &rarr; stage &rarr; record, with breadcrumbs back. Low risk, matches how developers read logs top to bottom.</li>
+</ul>
+    </div>
+  </div>
+
+  <!-- ===== OPTION 2 ===== -->
+  <div class="option-panel" id="option-2">
+    <h2>Option 2: <span class="opt-name">Split View</span></h2>
+    <p class="option-description">Stages, records, and the trace of one record share a single screen, so nothing costs a page load.</p>
+    <div class="sub-tab-bar" id="frame-opt2-tabs">
+      <button class="sub-tab-btn active" data-variant="wireframe" data-frame="frame-opt2">
+        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 48 48"><defs><mask id="ipTsketch2"><g fill="#555" stroke="#fff" stroke-linejoin="round" stroke-width="4"><rect width="36" height="36" x="6" y="6" rx="3"/><path stroke-linecap="round" d="M18.6 16h10.8l3.6 4.706L24 32l-9-11.294z"/></g></mask></defs><path fill="currentColor" d="M0 0h48v48H0z" mask="url(#ipTsketch2)"/></svg>
+        <span class="sub-tab-label">Wireframe</span>
+      </button>
+      <button class="sub-tab-btn" data-variant="clean" data-frame="frame-opt2">
+        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 48 48"><defs><mask id="ipTpaint2"><g fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"><path d="m15.536 22.898l9.899 9.9m-9.899-9.9L7.05 31.383a7 7 0 1 0 9.9 9.9l8.485-8.486m-9.899 0l-4.243 4.243"/><path fill="#555" d="m25.435 32.797l14.907-6.432c2.688-1.16 3.809-4.379 2.086-6.745C38.264 13.903 32.65 8.89 28.51 5.823c-2.29-1.696-5.33-.64-6.46 1.975l-6.514 15.1z"/></g></mask></defs><path fill="currentColor" d="M0 0h48v48H0z" mask="url(#ipTpaint2)"/></svg>
+        <span class="sub-tab-label">Clean</span>
+      </button>
+      <button class="sub-tab-btn" data-variant="polished" data-frame="frame-opt2">
+        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 48 48"><defs><mask id="ipTdiamond2"><path fill="#555" stroke="#fff" stroke-width="4" d="M5.939 13.934L23.036 4.53a2 2 0 0 1 1.928 0l17.097 9.404a2 2 0 0 1 .683 2.888l-17.098 24.79a2 2 0 0 1-3.292 0L5.256 16.823a2 2 0 0 1 .683-2.888Z"/></mask></defs><path fill="currentColor" d="M0 0h48v48H0z" mask="url(#ipTdiamond2)"/></svg>
+        <span class="sub-tab-label">Polished</span>
+      </button>
+    </div>
+    <div class="browser-frame wireframe" id="frame-opt2">
+      <div class="browser-chrome">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <div class="browser-url">127.0.0.1:8765/runs/42</div>
+        <div class="browser-controls">─ □ ✕</div>
+      </div>
+      <div class="browser-content">
+        <div class="wf">
+  <div class="wf-head"><div><h3>Run 42 &middot; clean_orders.py</h3><div class="wf-sub">failed at stage 2 &middot; 10,000 in &middot; 131 dropped &middot; 1 errored</div></div><div class="wf-sub">record 4471 of 10,000</div></div>
+  <div class="wf-split three">
+    <div class="wf-pane">
+      <h4>Stages <span class="wf-marker">1</span></h4>
+      <ul class="wf-list">
+        <li>0 normalize_headers<small>10,000 ok</small></li>
+        <li>1 drop_test_rows<small>9,869 ok &middot; 131 dropped</small></li>
+        <li class="sel">2 parse_amount<small>4,470 ok &middot; 1 errored</small></li>
+        <li>3 validate_email<small>not reached</small></li>
+        <li>4 dedupe_by_id<small>not reached</small></li>
+      </ul>
+      <h4 style="margin-top:14px">Fields</h4>
+      <ul class="wf-list">
+        <li>amount_cents<small>number &middot; 4,470</small></li>
+        <li>id<small>string &middot; 4,470</small></li>
+      </ul>
+    </div>
+    <div class="wf-pane">
+      <div class="wf-controls">
+        <button class="on">all</button><button>ok</button><button>dropped</button><button>error</button>
+        <input placeholder="search stored JSON" value="n/a"><span class="wf-marker">2</span>
+      </div>
+      <table class="wf-table">
+        <thead><tr><th class="num">#</th><th>status</th><th>input</th><th>output</th><th class="num">time</th></tr></thead>
+        <tbody><tr class="sel"><td class="num">4471</td><td><span class="wf-pill err">error</span></td><td class="code">{"id": "4471", "amount": "n/a"}</td><td class="code">&mdash;</td><td class="num">41&micro;s</td></tr>
+<tr><td class="num">4470</td><td><span class="wf-pill ok">ok</span></td><td class="code">{"id": "4470", "amount": "$29.99"}</td><td class="code">{"id": "4470", "amount_cents": 2999}</td><td class="num">37&micro;s</td></tr>
+<tr><td class="num">4469</td><td><span class="wf-pill ok">ok</span></td><td class="code">{"id": "4469", "amount": "$4.00"}</td><td class="code">{"id": "4469", "amount_cents": 400}</td><td class="num">35&micro;s</td></tr>
+<tr><td class="num">4468</td><td><span class="wf-pill dropped">dropped</span></td><td class="code">{"id": "4468", "amount": "$12.50"}</td><td class="code">&mdash;</td><td class="num">29&micro;s</td></tr>
+<tr><td class="num">4467</td><td><span class="wf-pill ok">ok</span></td><td class="code">{"id": "4467", "amount": "$130.00"}</td><td class="code">{"id": "4467", "amount_cents": 13000}</td><td class="num">36&micro;s</td></tr></tbody>
+      </table>
+      <div class="wf-note">showing 4,467&ndash;4,471 of 4,471 &middot; <a href="#">load more</a></div>
+      <div class="wf-code-head" style="margin-top:12px"><span><span class="wf-marker">3</span>stage_versions.source_text &middot; sha 4b81c2 &middot; python</span><button>copy</button></div>
+<div class="wf-code"><ol>
+<li><span class="cm">@stage</span></li>
+<li><span class="kw">def</span> parse_amount(record):</li>
+<li>    <span class="st">"""Convert the amount column from a currency string to cents."""</span></li>
+<li>    raw = record[<span class="st">"amount"</span>].strip().lstrip(<span class="st">"$"</span>)</li>
+<li>    record[<span class="st">"amount_cents"</span>] = <span class="kw">round</span>(<span class="kw">float</span>(raw) * 100)</li>
+<li>    <span class="kw">del</span> record[<span class="st">"amount"</span>]</li>
+<li>    <span class="kw">return</span> record</li>
+</ol></div>
+    </div>
+    <div class="wf-pane">
+      <h4>Trace &middot; record 4471 <span class="wf-marker">4</span></h4>
+      <div class="wf-trace">
+  <div class="t-head"><span>0 &middot; normalize_headers</span><span><span class="wf-pill ok">ok</span> 22&micro;s</span></div>
+  <div class="t-body">
+    <div><h5>input</h5>{"ID": "4471", "Amount": "n/a"}</div>
+    <div><h5>output</h5>{<span class="wf-chg">"id"</span>: "4471", <span class="wf-chg">"amount"</span>: "n/a"}</div>
+  </div>
+</div>
+<div class="wf-trace">
+  <div class="t-head"><span>1 &middot; drop_test_rows</span><span><span class="wf-pill ok">ok</span> 18&micro;s</span></div>
+  <div class="t-body">
+    <div><h5>input</h5>{"id": "4471", "amount": "n/a"}</div>
+    <div><h5>output</h5>{"id": "4471", "amount": "n/a"}</div>
+  </div>
+</div>
+<div class="wf-trace">
+  <div class="t-head"><span>2 &middot; parse_amount</span><span><span class="wf-pill err">error</span> 41&micro;s</span></div>
+  <div class="t-body">
+    <div><h5>input</h5>{"id": "4471", <span class="wf-chg">"amount": "n/a"</span>}</div>
+    <div><h5>error</h5>ValueError: could not convert
+string to float: 'n/a'</div>
+  </div>
+</div>
+<div class="wf-note">Trace ends here. Stages 3 and 4 never saw this record.</div>
+      <div class="wf-controls"><button>&larr; prev error</button><button>next error &rarr;</button></div>
+    </div>
+  </div>
+</div>
+      </div>
+    </div>
+    <div class="wf-annotations">
+      <h3>UX notes</h3><ul>
+<li><span class="wf-marker">1</span>Stage list, record table, and trace are on one screen, so picking a different stage or record never costs a page load or a lost scroll position.</li>
+<li><span class="wf-marker">2</span>Status filter and free-text search sit directly above the records they filter, and both are reflected in the URL so a view can be shared or refreshed.</li>
+<li><span class="wf-marker">3</span>The stage source sits under its own records, which is the pairing a developer actually needs: this code, applied to this row, produced this value.</li>
+<li><span class="wf-marker">4</span>Changed fields are highlighted against the previous stage's value, so the trace is read by scanning rather than by diffing two JSON blobs by eye.</li>
+<li>Previous and next step through records sharing a status, which makes walking a run's errors quick.</li>
+</ul>
+    </div>
+  </div>
+
+  <!-- ===== OPTION 3 ===== -->
+  <div class="option-panel" id="option-3">
+    <h2>Option 3: <span class="opt-name">Pipeline Funnel</span></h2>
+    <p class="option-description">The pipeline funnel is the navigation; selecting a stage swaps the code and statistics beneath it.</p>
+    <div class="sub-tab-bar" id="frame-opt3-tabs">
+      <button class="sub-tab-btn active" data-variant="wireframe" data-frame="frame-opt3">
+        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 48 48"><defs><mask id="ipTsketch3"><g fill="#555" stroke="#fff" stroke-linejoin="round" stroke-width="4"><rect width="36" height="36" x="6" y="6" rx="3"/><path stroke-linecap="round" d="M18.6 16h10.8l3.6 4.706L24 32l-9-11.294z"/></g></mask></defs><path fill="currentColor" d="M0 0h48v48H0z" mask="url(#ipTsketch3)"/></svg>
+        <span class="sub-tab-label">Wireframe</span>
+      </button>
+      <button class="sub-tab-btn" data-variant="clean" data-frame="frame-opt3">
+        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 48 48"><defs><mask id="ipTpaint3"><g fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"><path d="m15.536 22.898l9.899 9.9m-9.899-9.9L7.05 31.383a7 7 0 1 0 9.9 9.9l8.485-8.486m-9.899 0l-4.243 4.243"/><path fill="#555" d="m25.435 32.797l14.907-6.432c2.688-1.16 3.809-4.379 2.086-6.745C38.264 13.903 32.65 8.89 28.51 5.823c-2.29-1.696-5.33-.64-6.46 1.975l-6.514 15.1z"/></g></mask></defs><path fill="currentColor" d="M0 0h48v48H0z" mask="url(#ipTpaint3)"/></svg>
+        <span class="sub-tab-label">Clean</span>
+      </button>
+      <button class="sub-tab-btn" data-variant="polished" data-frame="frame-opt3">
+        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 48 48"><defs><mask id="ipTdiamond3"><path fill="#555" stroke="#fff" stroke-width="4" d="M5.939 13.934L23.036 4.53a2 2 0 0 1 1.928 0l17.097 9.404a2 2 0 0 1 .683 2.888l-17.098 24.79a2 2 0 0 1-3.292 0L5.256 16.823a2 2 0 0 1 .683-2.888Z"/></mask></defs><path fill="currentColor" d="M0 0h48v48H0z" mask="url(#ipTdiamond3)"/></svg>
+        <span class="sub-tab-label">Polished</span>
+      </button>
+    </div>
+    <div class="browser-frame wireframe" id="frame-opt3">
+      <div class="browser-chrome">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <div class="browser-url">127.0.0.1:8765/runs/42</div>
+        <div class="browser-controls">─ □ ✕</div>
+      </div>
+      <div class="browser-content">
+        <div class="wf">
+  <div class="wf-head">
+  <div><h3>Run 42 &middot; clean_orders.py</h3><div class="wf-sub">orders.csv &rarr; clean.csv &middot; 2026-09-18 14:02:11Z</div></div>
+  <div class="wf-sub">.squeegee/squeegee.db &middot; squeegee 0.1.0</div>
+</div>
+  <div class="wf-funnel">
+    <div><i style="height:70px"></i><span>0 headers</span><span>10,000</span></div>
+    <div><i style="height:69px"></i><span>1 test rows</span><span>9,869</span></div>
+    <div class="sel failed"><i style="height:31px"></i><span>2 amount <span class="wf-marker">1</span></span><span>4,470</span></div>
+    <div><i style="height:2px"></i><span>3 email</span><span>&mdash;</span></div>
+    <div><i style="height:2px"></i><span>4 dedupe</span><span>&mdash;</span></div>
+  </div>
+  <div class="wf-note"><span class="wf-marker">2</span>Bar height is records surviving. The cliff at stage 2 is the run stopping, not a transformation dropping rows.</div>
+  <div class="wf-cols-2">
+    <div>
+      <div class="wf-code-head"><span>stage_versions.source_text &middot; sha 4b81c2 &middot; python</span><button>copy</button></div>
+<div class="wf-code"><ol>
+<li><span class="cm">@stage</span></li>
+<li><span class="kw">def</span> parse_amount(record):</li>
+<li>    <span class="st">"""Convert the amount column from a currency string to cents."""</span></li>
+<li>    raw = record[<span class="st">"amount"</span>].strip().lstrip(<span class="st">"$"</span>)</li>
+<li>    record[<span class="st">"amount_cents"</span>] = <span class="kw">round</span>(<span class="kw">float</span>(raw) * 100)</li>
+<li>    <span class="kw">del</span> record[<span class="st">"amount"</span>]</li>
+<li>    <span class="kw">return</span> record</li>
+</ol></div>
+      <div class="wf-kv" style="grid-template-columns:1fr 1fr;margin-top:10px">
+        <div><span>input type</span><b>not annotated</b></div>
+        <div><span>output type</span><b>not annotated</b></div>
+        <div><span>first seen</span><b>2026-09-14</b></div>
+        <div><span>also used by</span><b>runs 39, 40, 41</b></div>
+      </div>
+    </div>
+    <div>
+      <h4 style="font-size:10px;text-transform:uppercase;color:#999;margin:0 0 6px">Field: amount_cents, after this stage <span class="wf-marker">3</span></h4>
+      <div class="wf-hist"><i style="height:20%"></i><i style="height:48%"></i><i style="height:88%"></i><i style="height:64%"></i><i style="height:40%"></i><i style="height:26%"></i><i style="height:15%"></i><i style="height:9%"></i><i style="height:6%"></i><i style="height:3%"></i></div>
+      <table class="wf-table">
+        <tbody>
+          <tr><td>non-null</td><td class="num">4,470</td><td>mean</td><td class="num">4,213.77</td></tr>
+          <tr><td>null</td><td class="num">4</td><td>median</td><td class="num">2,999</td></tr>
+          <tr><td>distinct</td><td class="num">1,884</td><td>sum</td><td class="num">18,835,554</td></tr>
+        </tbody>
+      </table>
+      <div class="wf-note"><span class="wf-marker">4</span>Before this stage the same field was the string <span class="wf-mono">amount</span>, top value <span class="wf-mono">"$29.99"</span> &times; 311.</div>
+    </div>
+  </div>
+</div>
+      </div>
+    </div>
+    <div class="wf-annotations">
+      <h3>UX notes</h3><ul>
+<li><span class="wf-marker">1</span>The pipeline is the navigation. Clicking a bar swaps everything below it; there is no separate stage page.</li>
+<li><span class="wf-marker">2</span>Shape first, numbers second: the funnel answers "where did my rows go" before the developer reads a single count.</li>
+<li><span class="wf-marker">3</span>Code and statistics sit side by side, which suits verifying a transformation more than debugging one bad row.</li>
+<li><span class="wf-marker">4</span>Every field shows its before and after across the selected stage, the fastest confirmation that a transformation did what was intended.</li>
+<li>Weakness: single-record tracing is a second click away, so the screen serves review better than debugging.</li>
+</ul>
+    </div>
+  </div>
+
+  <!-- ===== OPTION 4 ===== -->
+  <div class="option-panel" id="option-4">
+    <h2>Option 4: <span class="opt-name">Command Palette</span></h2>
+    <p class="option-description">One keyboard-driven input addresses every run, stage, record, and field, with almost no chrome.</p>
+    <div class="sub-tab-bar" id="frame-opt4-tabs">
+      <button class="sub-tab-btn active" data-variant="wireframe" data-frame="frame-opt4">
+        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 48 48"><defs><mask id="ipTsketch4"><g fill="#555" stroke="#fff" stroke-linejoin="round" stroke-width="4"><rect width="36" height="36" x="6" y="6" rx="3"/><path stroke-linecap="round" d="M18.6 16h10.8l3.6 4.706L24 32l-9-11.294z"/></g></mask></defs><path fill="currentColor" d="M0 0h48v48H0z" mask="url(#ipTsketch4)"/></svg>
+        <span class="sub-tab-label">Wireframe</span>
+      </button>
+      <button class="sub-tab-btn" data-variant="clean" data-frame="frame-opt4">
+        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 48 48"><defs><mask id="ipTpaint4"><g fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"><path d="m15.536 22.898l9.899 9.9m-9.899-9.9L7.05 31.383a7 7 0 1 0 9.9 9.9l8.485-8.486m-9.899 0l-4.243 4.243"/><path fill="#555" d="m25.435 32.797l14.907-6.432c2.688-1.16 3.809-4.379 2.086-6.745C38.264 13.903 32.65 8.89 28.51 5.823c-2.29-1.696-5.33-.64-6.46 1.975l-6.514 15.1z"/></g></mask></defs><path fill="currentColor" d="M0 0h48v48H0z" mask="url(#ipTpaint4)"/></svg>
+        <span class="sub-tab-label">Clean</span>
+      </button>
+      <button class="sub-tab-btn" data-variant="polished" data-frame="frame-opt4">
+        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 48 48"><defs><mask id="ipTdiamond4"><path fill="#555" stroke="#fff" stroke-width="4" d="M5.939 13.934L23.036 4.53a2 2 0 0 1 1.928 0l17.097 9.404a2 2 0 0 1 .683 2.888l-17.098 24.79a2 2 0 0 1-3.292 0L5.256 16.823a2 2 0 0 1 .683-2.888Z"/></mask></defs><path fill="currentColor" d="M0 0h48v48H0z" mask="url(#ipTdiamond4)"/></svg>
+        <span class="sub-tab-label">Polished</span>
+      </button>
+    </div>
+    <div class="browser-frame wireframe" id="frame-opt4">
+      <div class="browser-chrome">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <div class="browser-url">127.0.0.1:8765/runs/42</div>
+        <div class="browser-controls">─ □ ✕</div>
+      </div>
+      <div class="browser-content">
+        <div class="wf">
+  <div class="wf-head"><div><h3>Run 42 &middot; clean_orders.py</h3><div class="wf-sub">failed &middot; stage 2 parse_amount &middot; record 4471</div></div><div class="wf-sub">press <span class="wf-kbd">?</span> for keys</div></div>
+  <div class="wf-palette">
+    <input value="4471" placeholder="run, stage, record index, or field"><span class="wf-marker">1</span>
+    <ul>
+      <li class="sel"><span>record 4471 &middot; trace</span><small>error in parse_amount</small></li>
+      <li><span>record 4471 &middot; at stage 2</span><small>input and output</small></li>
+      <li><span>records matching "4471"</span><small>3 matches in stored JSON</small></li>
+      <li><span>run 41 &middot; record 4471</span><small>ok, previous run</small></li>
+    </ul>
+  </div>
+  <div class="wf-hint"><span class="wf-marker">2</span><span class="wf-kbd">&uarr;&darr;</span> move &middot; <span class="wf-kbd">enter</span> open &middot; <span class="wf-kbd">esc</span> dismiss &middot; <span class="wf-kbd">g</span> then <span class="wf-kbd">s</span> stages &middot; <span class="wf-kbd">e</span> next error</div>
+  <div style="margin-top:16px">
+    <div class="wf-controls"><b style="font-size:11px">Trace &middot; record 4471</b><span class="wf-marker">3</span><div class="spacer"></div><span class="wf-sub">3 of 5 stages ran</span></div>
+    <div class="wf-trace">
+  <div class="t-head"><span>0 &middot; normalize_headers</span><span><span class="wf-pill ok">ok</span> 22&micro;s</span></div>
+  <div class="t-body">
+    <div><h5>input</h5>{"ID": "4471", "Amount": "n/a"}</div>
+    <div><h5>output</h5>{<span class="wf-chg">"id"</span>: "4471", <span class="wf-chg">"amount"</span>: "n/a"}</div>
+  </div>
+</div>
+<div class="wf-trace">
+  <div class="t-head"><span>1 &middot; drop_test_rows</span><span><span class="wf-pill ok">ok</span> 18&micro;s</span></div>
+  <div class="t-body">
+    <div><h5>input</h5>{"id": "4471", "amount": "n/a"}</div>
+    <div><h5>output</h5>{"id": "4471", "amount": "n/a"}</div>
+  </div>
+</div>
+<div class="wf-trace">
+  <div class="t-head"><span>2 &middot; parse_amount</span><span><span class="wf-pill err">error</span> 41&micro;s</span></div>
+  <div class="t-body">
+    <div><h5>input</h5>{"id": "4471", <span class="wf-chg">"amount": "n/a"</span>}</div>
+    <div><h5>error</h5>ValueError: could not convert
+string to float: 'n/a'</div>
+  </div>
+</div>
+<div class="wf-note">Trace ends here. Stages 3 and 4 never saw this record.</div>
+  </div>
+</div>
+      </div>
+    </div>
+    <div class="wf-annotations">
+      <h3>UX notes</h3><ul>
+<li><span class="wf-marker">1</span>One input addresses everything: a run id, a stage name, a record index, or a field. No hierarchy to walk when the developer already knows the row number.</li>
+<li><span class="wf-marker">2</span>Keyboard-first, including a dedicated next-error key, which suits stepping through a run's failures without leaving the home row.</li>
+<li><span class="wf-marker">3</span>Behind the palette is only ever one thing: the current trace. Minimal chrome, no persistent navigation.</li>
+<li>Results reach across runs, so comparing the same record before and after a code change is one search.</li>
+<li>Weakness: poor for browsing. A developer who does not yet know what they are looking for gets very little scent.</li>
+</ul>
+    </div>
+  </div>
+
+  <!-- ===== OPTION 5 ===== -->
+  <div class="option-panel" id="option-5">
+    <h2>Option 5: <span class="opt-name">Record Matrix</span></h2>
+    <p class="option-description">The whole run as a grid: records down, stages across, one glyph per outcome.</p>
+    <div class="sub-tab-bar" id="frame-opt5-tabs">
+      <button class="sub-tab-btn active" data-variant="wireframe" data-frame="frame-opt5">
+        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 48 48"><defs><mask id="ipTsketch5"><g fill="#555" stroke="#fff" stroke-linejoin="round" stroke-width="4"><rect width="36" height="36" x="6" y="6" rx="3"/><path stroke-linecap="round" d="M18.6 16h10.8l3.6 4.706L24 32l-9-11.294z"/></g></mask></defs><path fill="currentColor" d="M0 0h48v48H0z" mask="url(#ipTsketch5)"/></svg>
+        <span class="sub-tab-label">Wireframe</span>
+      </button>
+      <button class="sub-tab-btn" data-variant="clean" data-frame="frame-opt5">
+        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 48 48"><defs><mask id="ipTpaint5"><g fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"><path d="m15.536 22.898l9.899 9.9m-9.899-9.9L7.05 31.383a7 7 0 1 0 9.9 9.9l8.485-8.486m-9.899 0l-4.243 4.243"/><path fill="#555" d="m25.435 32.797l14.907-6.432c2.688-1.16 3.809-4.379 2.086-6.745C38.264 13.903 32.65 8.89 28.51 5.823c-2.29-1.696-5.33-.64-6.46 1.975l-6.514 15.1z"/></g></mask></defs><path fill="currentColor" d="M0 0h48v48H0z" mask="url(#ipTpaint5)"/></svg>
+        <span class="sub-tab-label">Clean</span>
+      </button>
+      <button class="sub-tab-btn" data-variant="polished" data-frame="frame-opt5">
+        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 48 48"><defs><mask id="ipTdiamond5"><path fill="#555" stroke="#fff" stroke-width="4" d="M5.939 13.934L23.036 4.53a2 2 0 0 1 1.928 0l17.097 9.404a2 2 0 0 1 .683 2.888l-17.098 24.79a2 2 0 0 1-3.292 0L5.256 16.823a2 2 0 0 1 .683-2.888Z"/></mask></defs><path fill="currentColor" d="M0 0h48v48H0z" mask="url(#ipTdiamond5)"/></svg>
+        <span class="sub-tab-label">Polished</span>
+      </button>
+    </div>
+    <div class="browser-frame wireframe" id="frame-opt5">
+      <div class="browser-chrome">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <div class="browser-url">127.0.0.1:8765/runs/42</div>
+        <div class="browser-controls">─ □ ✕</div>
+      </div>
+      <div class="browser-content">
+        <div class="wf">
+  <div class="wf-head">
+  <div><h3>Run 42 &middot; clean_orders.py</h3><div class="wf-sub">orders.csv &rarr; clean.csv &middot; 2026-09-18 14:02:11Z</div></div>
+  <div class="wf-sub">.squeegee/squeegee.db &middot; squeegee 0.1.0</div>
+</div>
+  <div class="wf-controls">
+    <button class="on">all</button><button>errors only</button><button>dropped only</button>
+    <input placeholder="filter records" ><div class="spacer"></div>
+    <span class="wf-sub">&bull; ok &nbsp; &ndash; dropped &nbsp; &times; error &nbsp; &mdash; not reached</span>
+  </div>
+  <table class="wf-matrix">
+    <thead><tr><th>record <span class="wf-marker">1</span></th><th>0 headers</th><th>1 test rows</th><th>2 amount</th><th>3 email</th><th>4 dedupe</th></tr></thead>
+    <tbody><tr><td>4467</td><td class="ok">&bull;</td><td class="ok">&bull;</td><td class="ok">&bull;</td><td class=""></td><td class=""></td></tr>
+<tr><td>4468</td><td class="ok">&bull;</td><td class="dropped">&ndash;</td><td class=""></td><td class=""></td><td class=""></td></tr>
+<tr><td>4469</td><td class="ok">&bull;</td><td class="ok">&bull;</td><td class="ok">&bull;</td><td class=""></td><td class=""></td></tr>
+<tr><td>4470</td><td class="ok">&bull;</td><td class="ok">&bull;</td><td class="ok">&bull;</td><td class=""></td><td class=""></td></tr>
+<tr><td>4471</td><td class="ok">&bull;</td><td class="ok">&bull;</td><td class="err sel">&times;</td><td class=""></td><td class=""></td></tr>
+<tr><td>4472</td><td class="ok">&bull;</td><td class="ok">&bull;</td><td class=""></td><td class=""></td><td class=""></td></tr></tbody>
+  </table>
+  <div class="wf-note">showing 4,467&ndash;4,472 of 10,000 &middot; <a href="#">load more</a> &middot; <span class="wf-marker">2</span>every row is a record, every column a stage</div>
+  <div class="wf-split two" style="margin-top:12px">
+    <div class="wf-pane">
+      <h4>Cell &middot; 4471 &times; parse_amount <span class="wf-marker">3</span></h4>
+      <div class="wf-trace"><div class="t-body">
+        <div><h5>input</h5>{"id": "4471", <span class="wf-chg">"amount": "n/a"</span>}</div>
+        <div><h5>error</h5>ValueError: could not
+convert string to float: 'n/a'</div>
+      </div></div>
+      <div class="wf-controls"><button>open full trace</button><button>&larr;</button><button>&rarr;</button></div>
+    </div>
+    <div class="wf-pane">
+      <h4>Stage source <span class="wf-marker">4</span></h4>
+      <div class="wf-code-head"><span>stage_versions.source_text &middot; sha 4b81c2 &middot; python</span><button>copy</button></div>
+<div class="wf-code"><ol>
+<li><span class="cm">@stage</span></li>
+<li><span class="kw">def</span> parse_amount(record):</li>
+<li>    <span class="st">"""Convert the amount column from a currency string to cents."""</span></li>
+<li>    raw = record[<span class="st">"amount"</span>].strip().lstrip(<span class="st">"$"</span>)</li>
+<li>    record[<span class="st">"amount_cents"</span>] = <span class="kw">round</span>(<span class="kw">float</span>(raw) * 100)</li>
+<li>    <span class="kw">del</span> record[<span class="st">"amount"</span>]</li>
+<li>    <span class="kw">return</span> record</li>
+</ol></div>
+    </div>
+  </div>
+</div>
+      </div>
+    </div>
+    <div class="wf-annotations">
+      <h3>UX notes</h3><ul>
+<li><span class="wf-marker">1</span>The whole run is one grid: records down, stages across. Patterns in failures are visible as shapes, for example a whole block of rows dying at the same stage.</li>
+<li><span class="wf-marker">2</span>Status is a glyph as well as a shade, so the grid stays readable without relying on colour.</li>
+<li><span class="wf-marker">3</span>Selecting a cell opens the before and after for exactly that record at exactly that stage, with the full trace one click further.</li>
+<li><span class="wf-marker">4</span>The stage source for the selected column stays on screen while the developer moves between rows.</li>
+<li>Weakness: the grid gets unwieldy past a handful of stages, and it implies a spreadsheet the developer might expect to edit, which this UI never allows.</li>
+</ul>
+    </div>
+  </div>
+
+  <!-- ===== SUMMARY ===== -->
+  <div class="option-panel" id="summary">
+    <h2>Summary</h2>
+<p class="option-description">Five approaches to the same data: a run, its stages, its records, and the code that transformed them.</p>
+<table class="wf-table">
+  <thead><tr><th>Option</th><th>Approach</th><th>Best at</th><th>Overall UX</th></tr></thead>
+  <tbody>
+    <tr><td><b>1 Drill Down</b></td><td>Hierarchical pages: run &rarr; stage &rarr; record</td><td>Reading a run top to bottom the way you read a log</td><td>&#9733;&#9733;&#9733;&#9733;&#9734;</td></tr>
+    <tr><td><b>2 Split View</b></td><td>Stages, records, and trace side by side on one screen</td><td>Debugging: changing stage or record without losing context</td><td>&#9733;&#9733;&#9733;&#9733;&#9733;</td></tr>
+    <tr><td><b>3 Pipeline Funnel</b></td><td>The pipeline shape is the navigation</td><td>Reviewing whether a transformation did what was intended</td><td>&#9733;&#9733;&#9733;&#9733;&#9734;</td></tr>
+    <tr><td><b>4 Command Palette</b></td><td>One keyboard-driven input addresses everything</td><td>Jumping straight to a known record index</td><td>&#9733;&#9733;&#9733;&#9734;&#9734;</td></tr>
+    <tr><td><b>5 Record Matrix</b></td><td>A grid of records by stages</td><td>Seeing failure patterns across a whole run at once</td><td>&#9733;&#9733;&#9733;&#9734;&#9734;</td></tr>
+  </tbody>
+</table>
+<p class="wf-note"><b>Recommendation: Option 2, Split View.</b> The product requirement is that a developer can find the stage responsible for a wrong record in under a minute, and the split view is the only option where stage, records, source code, and trace are all reachable without navigation. Option 1's drill-down remains the fallback for narrow windows, and Option 3's funnel is worth folding into the run overview as the entry point that leads into the split view. Options 4 and 5 are strong secondary affordances rather than primary layouts: the palette is worth adding as a keyboard shortcut later, and the matrix only pays off for runs with few stages.</p>
+  </div>
+
+</div>
+
+<footer class="skill-footer">
+  This design was crafted by the <a href="https://github.com/Magdoub/claude-wireframe-skill">Wireframe skill</a> — follow on GitHub
+</footer>
+
+<script>
+(function() {
+  // Main tab switching
+  var tabBtns = document.querySelectorAll('.tab-btn');
+  var panels = document.querySelectorAll('.option-panel');
+  tabBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      tabBtns.forEach(function(b) { b.classList.remove('active'); });
+      panels.forEach(function(p) { p.classList.remove('active'); });
+      btn.classList.add('active');
+      var target = document.getElementById(btn.dataset.tab);
+      if (target) target.classList.add('active');
+    });
+  });
+
+  // Sub-tab switching
+  var subBtns = document.querySelectorAll('.sub-tab-btn');
+  subBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var frameId = btn.dataset.frame;
+      var siblings = btn.parentElement.querySelectorAll('.sub-tab-btn');
+      siblings.forEach(function(s) { s.classList.remove('active'); });
+      btn.classList.add('active');
+      var frame = document.getElementById(frameId);
+      if (frame) {
+        frame.classList.remove('wireframe', 'clean', 'polished');
+        frame.classList.add(btn.dataset.variant);
+      }
+    });
+  });
+
+  // Completion banner — one-time load check
+  window.addEventListener('load', function() {
+    var badges = document.querySelectorAll('.sub-tab-badge');
+    var anyVisible = false;
+    badges.forEach(function(b) {
+      if (getComputedStyle(b).display !== 'none') anyVisible = true;
+    });
+    if (!anyVisible && badges.length > 0) {
+      var banner = document.getElementById('completion-banner');
+      if (banner) {
+        banner.style.display = 'block';
+        setTimeout(function() { banner.style.display = 'none'; }, 8000);
+      }
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
