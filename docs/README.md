@@ -8,6 +8,7 @@ This directory holds the specification documents for Squeegee. Implementation ag
 | [technical-specification.md](technical-specification.md) | Package layout, public API, decorator semantics, CLI, execution model. |
 | [data-model.md](data-model.md) | ERD, SQLite schema, append-only rules, versioning of stages and runs. |
 | [ui-specification.md](ui-specification.md) | Local read-only web UI: screens, endpoints, analytics. |
+| [api.md](api.md) | The read-only HTTP API contract: parameters, response shapes, errors. |
 | [engineering-standards.md](engineering-standards.md) | Linting, formatting, typing, testing, coverage, pre-commit, CI. |
 | [ui-wireframes/](ui-wireframes/) | Wireframes for the UI screens. Generated in the next step. |
 | [decisions/](decisions/) | Architecture decision records: the choice made, why, and when to revisit it. |

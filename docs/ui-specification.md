@@ -31,7 +31,22 @@ Above the stages sits a summary strip with the run metadata and the overall funn
 
 ### 3. Stage detail
 
-For one stage in one run: the stage's source code as it ran, its input and output type annotations where the user wrote any, and a paginated table of the records that passed through it. Each row shows the record index, status, and a compact before/after preview. Filters: status (ok, dropped, error) and a text search across the JSON. Selecting a row opens the record trace.
+For one stage in one run: the stage's source code as it ran, rendered per the code display rules below, its input and output type annotations where the user wrote any, and a paginated table of the records that passed through it. Each row shows the record index, status, and a compact before/after preview. Filters: status (ok, dropped, error) and a text search across the JSON. Selecting a row opens the record trace.
+
+#### Code display
+
+The source of a stage is first-class content on this screen, not a footnote. It is the thing the developer reads to work out why a value came out wrong, so it gets the same care as the data.
+
+- Monospace throughout, from a stack of `ui-monospace`, `SFMono-Regular`, `Menlo`, `Consolas`, `monospace`, at a size that stays readable next to the data tables.
+- Python syntax highlighting, using `prism-react-renderer` with the Python grammar only. No other languages are registered, so the grammar cost stays small.
+- The highlight theme is defined in terms of the same CSS custom properties as the rest of the UI, so light and dark follow the system preference without a second theme package.
+- The source is exactly what ran, byte for byte, as stored in `stage_versions.source_text`. It is never reformatted, re-indented, or prettified by the client.
+- Line numbers on the left, starting at 1 relative to the stage's own source rather than the original file.
+- Long lines scroll horizontally. They do not wrap, because wrapped Python misleads about indentation.
+- A copy button yields the raw source with no line numbers.
+- Where a stage raised, the stage source is shown alongside the exception type and message so both are on screen at once.
+
+The same component renders the stage source in the record trace panels, collapsed by default there so the data stays the focus.
 
 ### 4. Record trace
 
