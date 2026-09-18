@@ -49,6 +49,7 @@ The UI lives in `frontend/` and builds into `src/squeegee/ui/static/`. It is a c
 - Vitest with Testing Library for component tests. The tests that matter are the ones for real logic: the diff highlighting between adjacent stages, cursor pagination, and JSON tree rendering of awkward values. No coverage gate on the frontend; trivial presentational components do not need tests to hit a number.
 - No component library and no CSS framework. Plain CSS with custom properties for the palette, so light and dark are one variable block rather than two stylesheets.
 - Icons from `lucide-react`, imported one by one. No barrel imports, no icon font.
+- Syntax highlighting from `prism-react-renderer`, with the Python grammar registered and nothing else. The theme is written against the UI's CSS custom properties rather than imported from a theme package.
 - `src/squeegee/ui/static/` is gitignored. A Hatch build hook builds the frontend during a wheel build and fails the build if the output is missing, so a published wheel can never serve a 404 for its own UI.
 
 ## Pre-commit
