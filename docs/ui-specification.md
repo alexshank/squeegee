@@ -1,0 +1,69 @@
+# UI Specification
+
+## Purpose and constraints
+
+The UI is a local, read-only window onto the SQLite database. It answers three questions: what happened in this run, what happened to this record, and do the numbers look right.
+
+- Launched with `squeegee ui`, bound to `127.0.0.1` only, no authentication, no external network calls.
+- Read-only. There are no buttons that write, re-run, edit, or delete. The server opens SQLite in read-only mode so this is structural, not just a UI choice.
+- Stack: FastAPI serving JSON endpoints plus a static single page. Installed as the `squeegee[ui]` extra so the core package stays dependency-free.
+- No build step. Plain HTML, CSS, and vanilla JavaScript served from `squeegee/ui/static/`. A developer debugging a CSV should not be waiting on npm.
+- Designed for a laptop screen at 1280px and up. Responsive down to tablet width; phone support is not a goal.
+
+## Screens
+
+### 1. Runs list
+
+The landing page. A table of every run, newest first: run id, script name, input file, started time, duration, status, and the counts in / out / dropped / errored. Clicking a row opens the run overview. A filter box narrows by script name.
+
+### 2. Run overview
+
+The most important screen. Shows the pipeline as a vertical sequence of stages, in declaration order, each one a card carrying:
+
+- Stage name and description.
+- Records in, records out, records dropped, records errored.
+- Median and total stage duration.
+- A drop indicator sized to the proportion of records the stage removed, so a stage that silently eats most of the input is visible at a glance.
+
+Above the stages sits a summary strip with the run metadata and the overall funnel from input count to output count. Clicking a stage card opens the stage detail. Clicking an error count opens the stage detail already filtered to errors.
+
+### 3. Stage detail
+
+For one stage in one run: the stage's source code as it ran, its input and output type annotations where the user wrote any, and a paginated table of the records that passed through it. Each row shows the record index, status, and a compact before/after preview. Filters: status (ok, dropped, error) and a text search across the JSON. Selecting a row opens the record trace.
+
+### 4. Record trace
+
+The debugging screen. For one record: its source value at the top, then one panel per stage showing input, output, status, and duration. Changed fields are highlighted against the previous stage's value, so the developer can see which stage introduced the wrong value without reading two JSON blobs side by side. Where the record was dropped or errored, the panel shows the reason and the trace ends there. Previous and next controls step through neighbouring records with the same status, which makes scanning a run's errors quick.
+
+### 5. Field analytics
+
+For one stage in one run, a table of every field present in the outputs: field name, inferred type, non-null count, null count, distinct count, and, for numeric fields, min, max, mean, median, and sum. Selecting a field shows its distribution: a histogram for numeric fields, top values for categorical ones. A toggle compares the same field before and after the stage, which is the fastest way to confirm a transformation did what was intended.
+
+All statistics are computed with SQLite aggregates over `json_extract` on the stored JSON. No pandas, no in-memory dataframe.
+
+### 6. Run comparison (should-have, may land after v1)
+
+Two runs of the same script side by side, with per-stage count deltas, so the developer can see what changing a stage did to the shape of the output.
+
+## API
+
+All endpoints are read-only `GET`, return JSON, and are versioned under `/api`.
+
+| Endpoint | Returns |
+| --- | --- |
+| `GET /api/runs` | Paginated run list with status and summary counts. |
+| `GET /api/runs/{run_id}` | Run metadata, script hash, options, overall counts. |
+| `GET /api/runs/{run_id}/stages` | Ordered stages with per-status counts and duration percentiles. |
+| `GET /api/runs/{run_id}/stages/{position}` | One stage plus its source text and annotations, which may be null. |
+| `GET /api/runs/{run_id}/stages/{position}/records` | Paginated record events for that stage, filterable by status and free text. |
+| `GET /api/runs/{run_id}/records/{record_index}` | Full trace of one record across every stage. |
+| `GET /api/runs/{run_id}/stages/{position}/fields` | Per-field statistics for the stage's outputs. |
+| `GET /api/runs/{run_id}/stages/{position}/fields/{field}` | Distribution detail for one field. |
+
+Pagination is cursor-based on the primary key. Every list endpoint caps its page size so a large run cannot be turned into a multi-megabyte response by a query parameter.
+
+## Visual direction
+
+Utilitarian and dense, closer to a debugger than a dashboard. Monospace for data values, a normal UI font for chrome. A restrained palette with one accent colour; status is carried by consistent colours for ok, dropped, and error, used identically on every screen. Dark and light both supported, following the system preference. JSON values are rendered in a collapsible tree, not as a wall of text.
+
+Wireframes for each screen go in [ui-wireframes/](ui-wireframes/) and are the next deliverable after these specifications are approved.
