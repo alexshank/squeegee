@@ -55,6 +55,8 @@ extend-exclude = ["*.md"]
 
 [tool.ruff.lint]
 select = ["A", "B", "C4", "D", "E", "F", "I", "N", "PTH", "RUF", "SIM", "UP"]
+# D105: a docstring on __enter__ or __exit__ restates the protocol and nothing else
+ignore = ["D105"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
