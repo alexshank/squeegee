@@ -152,11 +152,27 @@ def test_a_missing_script_is_a_usage_error(
     assert "does not exist" in capsys.readouterr().err
 
 
-def test_the_ui_says_it_is_not_built_yet(
+def test_the_ui_refuses_a_database_that_does_not_exist(
     workspace: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     assert run_cli(workspace, "ui") == EXIT_USAGE
-    assert "not built yet" in capsys.readouterr().err
+    assert "no squeegee database" in capsys.readouterr().err
+
+
+def test_the_ui_serves_the_database_it_was_given(
+    workspace: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    Store(workspace / "squeegee.db").close()
+    served: dict[str, object] = {}
+
+    def record(database: Path, port: int) -> int:
+        served.update(database=database, port=port)
+        return EXIT_OK
+
+    monkeypatch.setattr("squeegee.ui.serve", record)
+
+    assert run_cli(workspace, "ui", "--port", "9999") == EXIT_OK
+    assert served == {"database": workspace / "squeegee.db", "port": 9999}
 
 
 def test_the_database_defaults_to_beside_the_script(

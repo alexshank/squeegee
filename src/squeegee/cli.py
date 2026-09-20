@@ -154,11 +154,9 @@ def _show(arguments: argparse.Namespace) -> int:
 
 
 def _ui(arguments: argparse.Namespace) -> int:
-    # the server is slice 7; saying so is better than a stack trace
-    raise SqueegeeError(
-        "the ui is not built yet. Until it is, `squeegee runs` and `squeegee show RUN_ID` "
-        f"read the same database ({arguments.db})"
-    )
+    from squeegee.ui import serve
+
+    return serve(arguments.db, arguments.port)
 
 
 def _import_script(script: Path) -> None:
