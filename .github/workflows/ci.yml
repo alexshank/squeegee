@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - run: uv sync
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        # SQLite file locking and path handling differ by platform, so all three are tested
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.11", "3.12", "3.13"]
+        exclude:
+          - { os: macos-latest, python: "3.11" }
+          - { os: macos-latest, python: "3.12" }
+          - { os: windows-latest, python: "3.11" }
+          - { os: windows-latest, python: "3.12" }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - run: uv sync --python ${{ matrix.python }}
+      - run: uv run pytest
+
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - name: pip install works from a clean environment
+        run: |
+          python -m venv /tmp/venv
+          /tmp/venv/bin/pip install --quiet .
+          /tmp/venv/bin/python -c "import squeegee; print(squeegee.__version__)"
+      # once squeegee/cli.py exists, this becomes: uvx --from . squeegee --help
+      - name: uvx can build and resolve the package
+        run: uvx --from . python -c "import squeegee; print(squeegee.__version__)"

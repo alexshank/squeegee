@@ -1,0 +1,28 @@
+# python
+__pycache__/
+*.py[cod]
+.venv/
+dist/
+build/
+*.egg-info/
+
+# tooling caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# squeegee's own output when dogfooding
+.squeegee/
+
+# UI build output, produced by the frontend build and shipped only in wheels
+src/squeegee/ui/static/
+
+# node
+node_modules/
+
+# editors and OS
+.DS_Store
+.idea/
+.vscode/
