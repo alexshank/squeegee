@@ -9,17 +9,18 @@ This directory holds the specification documents for Squeegee. Implementation ag
 | [data-model.md](data-model.md) | ERD, SQLite schema, append-only rules, versioning of stages and runs. |
 | [ui-specification.md](ui-specification.md) | Local read-only web UI: screens, endpoints, analytics. |
 | [api.md](api.md) | The read-only HTTP API contract: parameters, response shapes, errors. |
-| [engineering-standards.md](engineering-standards.md) | Linting, formatting, typing, testing, coverage, pre-commit, CI. |
+| [engineering-standards.md](engineering-standards.md) | Linting, formatting, typing, testing, coverage, pre-commit, local checks. |
+| [implementation-plan.md](implementation-plan.md) | Ordered, independently shippable slices with acceptance criteria. |
 | [ui-wireframes/](ui-wireframes/) | Wireframes for the UI screens. Generated in the next step. |
 | [decisions/](decisions/) | Architecture decision records: the choice made, why, and when to revisit it. |
 
 ## Status
 
 - [x] Repository created
-- [ ] Specifications reviewed and approved
-- [ ] UI wireframes generated and committed
-- [ ] Tooling scaffolded (uv, ruff, mypy, pytest, pre-commit, CI)
-- [ ] Implementation
+- [x] Specifications written
+- [x] UI wireframes generated and committed (layout not yet chosen)
+- [x] Tooling scaffolded (uv, ruff, mypy, pytest, pre-commit, Makefile; checks run locally, no CI)
+- [ ] Implementation, slice by slice, per [implementation-plan.md](implementation-plan.md)
 
 ## Decisions already made
 
