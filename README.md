@@ -4,7 +4,7 @@ Observable cleaning and transforming of small data, for the ad-hoc work that lan
 
 You already write the throwaway script. Squeegee records what it did, so that when a value comes out wrong you can see which step did it.
 
-> **Status: specifications only.** There is no working code yet. The design lives in [`docs/`](docs/), and the tooling is in place so that implementation can start against a green repository. Nothing below runs today.
+> **Status: early.** Stages, readers and writers, the append-only store, the runner, and the CLI work today, and [`examples/`](examples/) runs end to end. The read-only web UI does not exist yet, so `squeegee ui` says so and points at `squeegee runs` and `squeegee show` instead. Progress is tracked in [docs/implementation-plan.md](docs/implementation-plan.md).
 
 ## The idea
 
@@ -60,6 +60,7 @@ Not a scheduler, not an orchestrator, not a warehouse tool. If the data matters 
 | [docs/engineering-standards.md](docs/engineering-standards.md) | Linting, typing, testing, pre-commit, CI |
 | [docs/decisions/](docs/decisions/) | Why SQLite and not DuckDB; why a stdlib server and not FastAPI |
 | [docs/ui-wireframes/](docs/ui-wireframes/) | Black and white wireframes, five UX approaches |
+| [docs/example-pipeline.md](docs/example-pipeline.md) | The worked example in `examples/`, and how to use it for validation |
 
 Decisions worth knowing before reading the rest: stages take one record at a time, pipelines are declaration order, the store is append-only SQLite, runs fail fast, and the package has no third-party runtime dependencies.
 

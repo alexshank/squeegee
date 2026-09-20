@@ -16,7 +16,7 @@ Read [technical-specification.md](technical-specification.md) and [data-model.md
 
 Packaging, ruff, mypy, pytest, pre-commit, Makefile. Checks run locally; there is no CI.
 
-## Slice 1 — Stage registry
+## Slice 1 — Stage registry (done)
 
 **Files:** `src/squeegee/stages.py`, `tests/test_stages.py`
 
@@ -32,7 +32,7 @@ Implement the `@stage` decorator and the module-level registry.
 
 **Not in this slice:** execution, persistence, type compatibility checking of any kind.
 
-## Slice 2 — Readers and writers
+## Slice 2 — Readers and writers (done)
 
 **Files:** `src/squeegee/io/`, `tests/test_io.py`
 
@@ -43,7 +43,7 @@ Implement the `@stage` decorator and the module-level registry.
 
 **Acceptance:** round trip of CSV and of both JSON shapes preserves records; an unknown extension fails before opening the file; reading is streaming, which a test asserts by reading one record from a large file without exhausting it.
 
-## Slice 3 — Append-only store
+## Slice 3 — Append-only store (done)
 
 **Files:** `src/squeegee/store/`, `tests/store/test_sqlite.py`
 
@@ -56,7 +56,7 @@ The schema exactly as written in [data-model.md](data-model.md), including the `
 
 **Acceptance:** an `UPDATE` and a `DELETE` against every table raises; a run recorded then closed is reported correctly by `run_status`; the same stage across two runs produces one `stage_versions` row and an edited stage produces two, with the older run still resolving to the older source text; an unserializable value is recorded in the marker form.
 
-## Slice 4 — Runner
+## Slice 4 — Runner (done)
 
 **Files:** `src/squeegee/runner.py`, `tests/test_runner.py`
 
@@ -70,7 +70,7 @@ Drives records through the registered stages and records everything.
 
 **Acceptance:** the drop, error, and fail-fast behaviours each assert against both the output file and the stored events; a stage mutating its input in place does not corrupt the stored input; a run over ten thousand records through five stages completes in under five seconds with persistence on.
 
-## Slice 5 — CLI
+## Slice 5 — CLI (done, except `ui`)
 
 **Files:** `src/squeegee/cli.py`, `tests/test_cli.py`, and uncommenting `[project.scripts]` in `pyproject.toml`
 
@@ -82,7 +82,7 @@ Drives records through the registered stages and records everything.
 
 **Acceptance:** an end-to-end test runs a real script over a real CSV through the CLI and asserts the output file, the exit code, and the stored run; `pip install .` then `squeegee --help` works from a clean environment.
 
-## Slice 6 — Query layer
+## Slice 6 — Query layer (started)
 
 **Files:** `src/squeegee/store/queries.py`, `tests/store/test_queries.py`
 
@@ -94,6 +94,8 @@ Read-side functions backing every endpoint in [api.md](api.md), returning plain 
 - `changed_fields` computed server side by comparing each event's input and output at the top level.
 
 **Acceptance:** each function is tested against a fixture database built by a real run; pagination returns every row exactly once across pages; field statistics match values computed independently in the test.
+
+`list_runs` and `run_summary` already exist, because `squeegee runs` and `squeegee show` need them. What remains is the per-record, per-field, and pagination side of [api.md](api.md). Build the fixture database the way [example-pipeline.md](example-pipeline.md) describes rather than inventing one.
 
 ## Slice 7 — HTTP server
 

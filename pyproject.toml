@@ -25,10 +25,8 @@ dependencies = []
 Homepage = "https://github.com/alexshank/squeegee"
 Repository = "https://github.com/alexshank/squeegee"
 
-# entry point stays commented out until squeegee/cli.py exists, so an install
-# never advertises a command that cannot run
-# [project.scripts]
-# squeegee = "squeegee.cli:main"
+[project.scripts]
+squeegee = "squeegee.cli:main"
 
 [build-system]
 requires = ["hatchling"]
