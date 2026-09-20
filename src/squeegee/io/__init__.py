@@ -5,7 +5,7 @@ desk during an ordinary day. Adding a format means adding a module here and
 one entry to the two tables below.
 """
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
 from typing import Any, TypeVar
 
@@ -36,7 +36,7 @@ def read_records(path: Path) -> Iterator[Record]:
     Raises:
         FormatError: The extension is unsupported.
     """
-    return _resolve(_READERS, path)(path)
+    return reader_for(path)(path)
 
 
 def write_records(path: Path, records: Iterable[Record]) -> int:
@@ -45,7 +45,17 @@ def write_records(path: Path, records: Iterable[Record]) -> int:
     Raises:
         FormatError: The extension is unsupported.
     """
-    return _resolve(_WRITERS, path)(path, records)
+    return writer_for(path)(path, records)
+
+
+def reader_for(path: Path) -> Callable[[Path], Iterator[Record]]:
+    """Return the reader for ``path``, so a run can fail before it starts."""
+    return _resolve(_READERS, path)
+
+
+def writer_for(path: Path) -> Callable[[Path, Iterable[Record]], int]:
+    """Return the writer for ``path``, so a run can fail before it starts."""
+    return _resolve(_WRITERS, path)
 
 
 def _resolve(table: dict[str, Resolved], path: Path) -> Resolved:

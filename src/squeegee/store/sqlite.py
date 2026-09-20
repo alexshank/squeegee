@@ -29,7 +29,7 @@ TABLES = (
 
 # events are buffered so that a ten thousand record run does not pay one
 # transaction per stage per record
-BATCH_SIZE = 500
+BATCH_SIZE = 1_000
 
 _SCHEMA = Path(__file__).with_name("schema.sql")
 
@@ -44,6 +44,11 @@ class Store:
         self._connection = sqlite3.connect(path)
         self._connection.execute("PRAGMA journal_mode=WAL")
         self._connection.execute("PRAGMA foreign_keys=ON")
+        # NORMAL is the usual companion to WAL: a commit no longer waits on fsync,
+        # which is the difference between a five second run and a fifteen second one.
+        # The exposure is losing the most recent commits to a power cut, never to a
+        # crash of squeegee itself, and this is a debugging record, not a ledger.
+        self._connection.execute("PRAGMA synchronous=NORMAL")
         self._connection.executescript(_SCHEMA.read_text(encoding="utf-8"))
         self._connection.executescript(_append_only_triggers())
         self._connection.commit()
@@ -131,8 +136,12 @@ class Store:
         return _row_id(cursor)
 
     def add_record(self, run_id: int, record_index: int, source: Any) -> int:
-        """Store a record as it was read, and return its id."""
-        self.flush()
+        """Store a record as it was read, and return its id.
+
+        Buffered events are deliberately not flushed here: they already carry the
+        record id they belong to, and flushing per record would commit once per
+        record and undo the batching entirely.
+        """
         cursor = self._connection.execute(
             "INSERT INTO records (run_id, record_index, source_json) VALUES (?, ?, ?)",
             (run_id, record_index, to_json(source)),

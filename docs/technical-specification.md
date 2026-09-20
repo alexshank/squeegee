@@ -91,7 +91,7 @@ This asymmetry is deliberate. Squeegee's own source is checked with `mypy --stri
 4. Records stream one at a time. For each record the runner assigns a record index, then walks the stages in order. For each stage it writes one `record_events` row holding the input value, the output value, a status, and the elapsed time.
 5. A stage returning `None` marks the record dropped. No later stage runs for that record.
 6. A stage raising an exception marks the record errored and stores the exception type, message, and traceback. The run then aborts: fail fast is the default. The run is still closed out cleanly with status `failed`, so the partial results stay reviewable in the UI. With `--continue-on-error` the runner instead moves on to the next record and the run finishes normally.
-7. Records surviving every stage are handed to the writer.
+7. Records surviving every stage are handed to the writer. A failed run writes no output file at all, because half a cleaned CSV is worse than none; the recorded run still holds everything that was processed.
 8. The runner closes the `runs` row with an end timestamp, a status, and summary counts.
 
 Execution is single process and synchronous. Persistence happens in batched transactions so a ten thousand record run does not pay one transaction per event.

@@ -74,6 +74,7 @@ enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["slow: a test that measures throughput rather than behaviour"]
 addopts = "--cov=squeegee --cov-report=term-missing --cov-fail-under=90 --strict-markers -q"
 
 [tool.coverage.report]
