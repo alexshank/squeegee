@@ -68,12 +68,12 @@ Squeegee itself is strictly typed and strictly linted. **Your** scripts are not:
 ## Development
 
 ```
-uv sync           # create the environment
-uv run pytest     # tests with coverage
-uv run ruff check .
-uv run mypy
-uv run pre-commit install
+uv sync      # create the environment
+make hooks   # install the pre-commit hooks
+make check   # lint, typecheck, test
 ```
+
+Every check runs locally. There is no CI, deliberately; see [docs/engineering-standards.md](docs/engineering-standards.md).
 
 ## License
 

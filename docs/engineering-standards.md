@@ -64,15 +64,29 @@ The UI lives in `frontend/` and builds into `src/squeegee/ui/static/`. It is a c
 
 Tests are not in pre-commit; they run in CI and on demand. Hooks should stay fast enough that nobody is tempted to use `--no-verify`.
 
-## CI
+## Checks run locally
 
-GitHub Actions, on push and pull request:
+There is no CI. Every check runs on a developer's machine, through `make` and through pre-commit. This is a deliberate choice for a project at this stage: the feedback loop is a developer already sitting at the terminal, and a green pipeline on a server proves nothing they could not have seen a second earlier.
 
-- `lint`: ruff check, ruff format --check, mypy --strict.
-- `test`: pytest with coverage across the supported Python versions on Ubuntu, plus one macOS and one Windows job because SQLite paths and file locking differ.
-- `frontend`: `biome ci`, `tsc --noEmit`, `vitest run`, and `vite build`.
-- `install`: verify `pip install .` and `uvx --from . squeegee --help` both work from a clean environment, and that the built wheel contains the UI assets.
-- Publishing to PyPI runs on tagged releases via trusted publishing. No API tokens in repository secrets.
+```
+make check       # lint, typecheck, test
+make lint        # ruff check, ruff format --check
+make typecheck   # mypy --strict
+make test        # pytest with the coverage gate
+make format      # ruff check --fix, ruff format
+make hooks       # install the pre-commit hooks
+```
+
+`make check` must pass before any commit is pushed. The pre-commit hooks cover the fast half of it automatically.
+
+Two checks have no `make` target yet because they need a clean environment, and should be run by hand before a release:
+
+- `pip install .` into a fresh virtual environment, then `import squeegee`.
+- `uvx --from . squeegee --help`, once `cli.py` exists.
+
+### If CI is added later
+
+The shape is already settled, so adding it is mechanical rather than a decision: a `lint` job, a `test` job across 3.11, 3.12, and 3.13 with one macOS and one Windows runner since SQLite paths and file locking differ by platform, a `frontend` job running `biome ci`, `tsc --noEmit`, `vitest run`, and `vite build`, and an `install` job verifying both install paths and that the built wheel contains the UI assets. Publishing to PyPI would run on tagged releases through trusted publishing, with no API tokens in repository secrets.
 
 ## Practices
 
