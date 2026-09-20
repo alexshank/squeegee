@@ -7,6 +7,7 @@ import pytest
 
 from squeegee.cli import EXIT_OK, EXIT_RUN_FAILED, EXIT_USAGE, main
 from squeegee.stages import clear_registry
+from squeegee.store import Store
 
 SCRIPT = '''
 from squeegee import stage
@@ -172,9 +173,16 @@ def test_the_database_defaults_to_beside_the_script(
 def test_an_empty_database_lists_nothing(
     workspace: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    (workspace / "orders.csv").write_text("id\n1\n")
-    run_script(workspace)
-    capsys.readouterr()
+    Store(workspace / "squeegee.db").close()
 
-    assert run_cli(workspace, "runs", "--limit", "0") == EXIT_OK
+    assert run_cli(workspace, "runs") == EXIT_OK
     assert "no runs recorded" in capsys.readouterr().out
+
+
+def test_a_limit_below_one_is_a_usage_error(
+    workspace: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    Store(workspace / "squeegee.db").close()
+
+    assert run_cli(workspace, "runs", "--limit", "0") == EXIT_USAGE
+    assert "limit must be at least 1" in capsys.readouterr().err

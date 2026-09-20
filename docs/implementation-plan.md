@@ -82,7 +82,7 @@ Drives records through the registered stages and records everything.
 
 **Acceptance:** an end-to-end test runs a real script over a real CSV through the CLI and asserts the output file, the exit code, and the stored run; `pip install .` then `squeegee --help` works from a clean environment.
 
-## Slice 6 — Query layer (started)
+## Slice 6 — Query layer (done)
 
 **Files:** `src/squeegee/store/queries.py`, `tests/store/test_queries.py`
 
@@ -95,7 +95,7 @@ Read-side functions backing every endpoint in [api.md](api.md), returning plain 
 
 **Acceptance:** each function is tested against a fixture database built by a real run; pagination returns every row exactly once across pages; field statistics match values computed independently in the test.
 
-`list_runs` and `run_summary` already exist, because `squeegee runs` and `squeegee show` need them. What remains is the per-record, per-field, and pagination side of [api.md](api.md). Build the fixture database the way [example-pipeline.md](example-pipeline.md) describes rather than inventing one.
+Every function is tested against the database that [example-pipeline.md](example-pipeline.md) describes, built by running the real example through the real CLI.
 
 ## Slice 7 — HTTP server
 

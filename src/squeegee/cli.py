@@ -114,7 +114,7 @@ def _print_result(result: RunResult) -> None:
 
 
 def _runs(arguments: argparse.Namespace) -> int:
-    runs = list_runs(arguments.db, arguments.limit)
+    runs = list_runs(arguments.db, arguments.limit)["items"]
     if not runs:
         print(f"no runs recorded in {arguments.db}")
         return EXIT_OK
