@@ -69,12 +69,15 @@ Tests are not in pre-commit; they run in CI and on demand. Hooks should stay fas
 There is no CI. Every check runs on a developer's machine, through `make` and through pre-commit. This is a deliberate choice for a project at this stage: the feedback loop is a developer already sitting at the terminal, and a green pipeline on a server proves nothing they could not have seen a second earlier.
 
 ```
-make check       # lint, typecheck, test
+make check       # lint, typecheck, test, on the Python side
 make lint        # ruff check, ruff format --check
 make typecheck   # mypy --strict
 make test        # pytest with the coverage gate
 make format      # ruff check --fix, ruff format
 make hooks       # install the pre-commit hooks
+make ui          # build the frontend into src/squeegee/ui/static (needs Node)
+make ui-check    # biome, tsc --noEmit, vitest
+make wheel       # build a wheel, which fails if the UI assets are missing
 ```
 
 `make check` must pass before any commit is pushed. The pre-commit hooks cover the fast half of it automatically.

@@ -1,5 +1,5 @@
 # every check runs locally; there is no CI, by choice
-.PHONY: check lint format typecheck test hooks sync
+.PHONY: check lint format typecheck test hooks sync ui ui-check wheel
 
 check: lint typecheck test
 
@@ -22,3 +22,13 @@ test:
 
 hooks:
 	uv run pre-commit install
+
+# the UI targets need Node; users installing a wheel never do
+ui:
+	cd frontend && npm install && npm run build
+
+ui-check:
+	cd frontend && npm run check && npx tsc --noEmit && npm test
+
+wheel:
+	uv build --wheel

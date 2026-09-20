@@ -223,6 +223,29 @@ def test_a_port_can_be_taken_by_something_that_is_not_squeegee(database: Path) -
     holder.close()
 
 
+def test_serve_says_so_when_the_assets_are_missing(
+    database: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(ui_server, "STATIC", tmp_path / "never-built")
+    real_build = ui_server.build_server
+
+    def interrupted(*arguments: Any, **keywords: Any) -> ThreadingHTTPServer:
+        server = real_build(*arguments, **keywords)
+        monkeypatch.setattr(
+            server, "serve_forever", lambda *_, **__: (_ for _ in ()).throw(KeyboardInterrupt)
+        )
+        return server
+
+    monkeypatch.setattr(ui_server, "build_server", interrupted)
+
+    ui_server.serve(database, port=0)
+
+    assert "assets are not built" in capsys.readouterr().out
+
+
 def test_built_assets_are_served_when_they_exist(
     database: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -264,7 +287,6 @@ def test_serve_prints_where_it_is_listening_and_stops_cleanly(
     printed = capsys.readouterr().out
     assert "squeegee ui on http://127.0.0.1:" in printed
     assert "stopped" in printed
-    assert "assets are not built" in printed
 
 
 def test_requests_are_logged_when_not_quiet(
@@ -281,3 +303,21 @@ def test_requests_are_logged_when_not_quiet(
         server.server_close()
 
     assert "/api/meta" in capsys.readouterr().err
+
+
+def test_the_placeholder_page_is_served_when_nothing_is_built(
+    database: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(ui_server, "STATIC", tmp_path / "never-built")
+    server = ui_server.build_server(database, port=0, quiet=True)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    host, port = server.socket.getsockname()[:2]
+    try:
+        with urlopen(f"http://{host}:{port}/") as response:
+            body = response.read().decode()
+    finally:
+        server.shutdown()
+        server.server_close()
+
+    assert "The UI assets are not built" in body
+    assert "/api/runs" in body

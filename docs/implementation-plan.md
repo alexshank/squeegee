@@ -97,7 +97,7 @@ Read-side functions backing every endpoint in [api.md](api.md), returning plain 
 
 Every function is tested against the database that [example-pipeline.md](example-pipeline.md) describes, built by running the real example through the real CLI.
 
-## Slice 7 — HTTP server
+## Slice 7 — HTTP server (done)
 
 **Files:** `src/squeegee/ui/server.py`, `tests/ui/test_server.py`
 
@@ -105,7 +105,7 @@ Every function is tested against the database that [example-pipeline.md](example
 
 **Acceptance:** every documented endpoint returns its documented shape; a bad parameter returns 400 naming it; an unknown `/api` path returns JSON 404 while an unknown other path returns `index.html`; a test asserts that every route registered in the server appears in `docs/api.md`.
 
-## Slice 8 — Frontend scaffold
+## Slice 8 — Frontend scaffold (done)
 
 **Files:** `frontend/`, plus the Hatch build hook in `pyproject.toml`
 
