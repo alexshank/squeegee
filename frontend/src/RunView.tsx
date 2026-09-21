@@ -7,6 +7,7 @@ import { StagesPane } from "./components/StagesPane";
 import { TracePane } from "./components/TracePane";
 import { useParamSetter } from "./router";
 import { useApi } from "./useApi";
+import { useRecords } from "./useRecords";
 
 interface Props {
   runId: number;
@@ -26,14 +27,7 @@ export function RunView({ runId, params }: Props) {
   const run = useApi(() => api.run(runId), [runId]);
   const stage = useApi(() => api.stage(runId, position), [runId, position]);
   const fields = useApi(() => api.fields(runId, position), [runId, position]);
-  const records = useApi(
-    () =>
-      api.stageRecords(runId, position, {
-        ...(status ? { status } : {}),
-        ...(search ? { q: search } : {}),
-      }),
-    [runId, position, status, search],
-  );
+  const records = useRecords(runId, position, status, search);
   const trace = useApi(
     () =>
       recordIndex === null
@@ -118,13 +112,17 @@ export function RunView({ runId, params }: Props) {
         <div style={{ display: "flex", flexDirection: "column", minWidth: 0, overflowY: "auto" }}>
           <RecordsPane
             stage={stage.data}
-            page={records.data}
+            records={records.items}
+            hasMore={records.hasMore}
+            loading={records.loading}
+            error={records.error}
             status={status}
             search={search}
             recordIndex={recordIndex}
             onStatus={(next) => setParams({ status: next })}
             onSearch={(next) => setParams({ q: next || null })}
             onRecord={(index) => setParams({ record: String(index) })}
+            onLoadMore={records.loadMore}
           />
           {fieldDetail.data && <FieldPanel detail={fieldDetail.data} />}
         </div>

@@ -1,0 +1,73 @@
+import { useCallback, useEffect, useState } from "react";
+import { type RecordEvent, type Status, api } from "./api";
+
+export interface Records {
+  items: RecordEvent[];
+  hasMore: boolean;
+  loading: boolean;
+  error: string | null;
+  loadMore: () => void;
+}
+
+/**
+ * The records of one stage, one page at a time.
+ *
+ * Pages accumulate as the developer asks for more, and start over whenever the
+ * stage or either filter changes, because a cursor only means anything within
+ * the query that produced it.
+ */
+export function useRecords(
+  runId: number,
+  position: number,
+  status: Status | null,
+  search: string,
+): Records {
+  const [items, setItems] = useState<RecordEvent[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(
+    (from: string | null) => {
+      let current = true;
+      setLoading(true);
+      setError(null);
+      api
+        .stageRecords(runId, position, {
+          ...(status ? { status } : {}),
+          ...(search ? { q: search } : {}),
+          ...(from ? { cursor: from } : {}),
+        })
+        .then((page) => {
+          if (!current) return;
+          setItems((already) => (from === null ? page.items : [...already, ...page.items]));
+          setCursor(page.next_cursor);
+          setHasMore(page.has_more);
+          setLoading(false);
+        })
+        .catch((failure: Error) => {
+          if (!current) return;
+          setError(failure.message);
+          setLoading(false);
+        });
+      return () => {
+        current = false;
+      };
+    },
+    [runId, position, status, search],
+  );
+
+  useEffect(() => {
+    setItems([]);
+    setCursor(null);
+    setHasMore(false);
+    return load(null);
+  }, [load]);
+
+  const loadMore = useCallback(() => {
+    if (cursor !== null) load(cursor);
+  }, [cursor, load]);
+
+  return { items, hasMore, loading, error, loadMore };
+}

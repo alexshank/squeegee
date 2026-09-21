@@ -46,7 +46,7 @@ The UI lives in `frontend/` and builds into `src/squeegee/ui/static/`. It is a c
 
 - Vite for the build, React for the UI, TypeScript with `strict: true` and `noUncheckedIndexedAccess`. The typing discipline matches the Python side: no `any` in shared code, no unexplained `@ts-expect-error`.
 - Biome for both linting and formatting, chosen for the same reason as ruff: one fast tool, one config block, no ESLint and Prettier disagreeing about the same file.
-- Vitest with Testing Library for component tests. The tests that matter are the ones for real logic: the diff highlighting between adjacent stages, cursor pagination, and JSON tree rendering of awkward values. No coverage gate on the frontend; trivial presentational components do not need tests to hit a number.
+- Vitest with Testing Library for component tests. The tests that matter are the ones for real logic: cursor pagination and its reset when a filter changes, the fields a stage changed, the query the API client builds, and the error envelope becoming an ApiError. No coverage gate on the frontend; trivial presentational components do not need tests to hit a number.
 - No component library and no CSS framework. Plain CSS with custom properties for the palette, so light and dark are one variable block rather than two stylesheets.
 - Icons from `lucide-react`, imported one by one. No barrel imports, no icon font.
 - Syntax highlighting from `prism-react-renderer`, with the Python grammar registered and nothing else. The theme is written against the UI's CSS custom properties rather than imported from a theme package.

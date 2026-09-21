@@ -1,5 +1,5 @@
 import { activate } from "../RunsList";
-import type { Page, RecordEvent, StageDetail, Status } from "../api";
+import type { RecordEvent, StageDetail, Status } from "../api";
 import { StageSource } from "./StageSource";
 import { Empty, PaneHeading } from "./StagesPane";
 import { StatusPill } from "./StatusPill";
@@ -8,18 +8,22 @@ const STATUSES: (Status | null)[] = [null, "ok", "dropped", "error"];
 
 interface Props {
   stage: StageDetail | null;
-  page: Page<RecordEvent> | null;
+  records: RecordEvent[];
+  hasMore: boolean;
+  loading: boolean;
+  error: string | null;
   status: Status | null;
   search: string;
   recordIndex: number | null;
   onStatus: (status: Status | null) => void;
   onSearch: (search: string) => void;
   onRecord: (index: number) => void;
+  onLoadMore: () => void;
 }
 
 /** The records that passed through the chosen stage, and the code that did it. */
 export function RecordsPane(props: Props) {
-  const { stage, page, status, search, recordIndex } = props;
+  const { stage, records, hasMore, loading, error, status, search, recordIndex } = props;
   return (
     <section style={{ overflowY: "auto", padding: "0 0.75rem 1rem" }}>
       <div
@@ -66,8 +70,9 @@ export function RecordsPane(props: Props) {
         />
       </div>
 
-      {page && page.items.length === 0 && <Empty>no records match</Empty>}
-      {page && page.items.length > 0 && (
+      {error && <p className="status-error">{error}</p>}
+      {!loading && records.length === 0 && <Empty>no records match</Empty>}
+      {records.length > 0 && (
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem" }}>
           <thead>
             <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: "0.7rem" }}>
@@ -79,7 +84,7 @@ export function RecordsPane(props: Props) {
             </tr>
           </thead>
           <tbody>
-            {page.items.map((event) => (
+            {records.map((event) => (
               <tr
                 key={event.record_index}
                 tabIndex={0}
@@ -117,11 +122,39 @@ export function RecordsPane(props: Props) {
           </tbody>
         </table>
       )}
-      {page?.has_more && (
-        <p style={{ color: "var(--muted)", fontSize: "0.75rem" }}>
-          showing the first {page.items.length}; narrow the filter to see the rest
-        </p>
-      )}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.5rem",
+          padding: "0.4rem 0",
+          color: "var(--muted)",
+          fontSize: "0.75rem",
+        }}
+      >
+        <span>
+          {records.length} record{records.length === 1 ? "" : "s"}
+          {hasMore ? " so far" : ""}
+        </span>
+        {hasMore && (
+          <button
+            type="button"
+            onClick={props.onLoadMore}
+            disabled={loading}
+            style={{
+              border: "1px solid var(--border)",
+              background: "none",
+              color: "var(--text)",
+              cursor: loading ? "default" : "pointer",
+              font: "inherit",
+              fontSize: "0.75rem",
+              padding: "0.1rem 0.5rem",
+            }}
+          >
+            {loading ? "loading…" : "load more"}
+          </button>
+        )}
+      </div>
 
       {stage && (
         <>
