@@ -20,6 +20,7 @@ src/squeegee/
         __init__.py    # reader/writer resolution by file extension
         csv_io.py
         json_io.py
+        text_io.py
     store/
         __init__.py    # Store facade used by the runner
         schema.sql     # table and trigger definitions
@@ -86,7 +87,7 @@ This asymmetry is deliberate. Squeegee's own source is checked with `mypy --stri
 ## Execution model
 
 1. The CLI imports the user's script as a module. Import triggers the decorators, which append to a module-level registry in declaration order.
-2. The runner resolves the reader from the input file extension and the writer from the output file extension.
+2. The runner resolves the reader from the input file extension and the writer from the output file extension. A script that called `squeegee.io.register_reader(suffix, reader)` at import time has its own reader used instead, which is how a free-text file whose entries only that file knows how to delimit becomes records. Registered readers are cleared before each script is imported.
 3. The runner opens the store, inserts a `runs` row, and inserts or reuses a `stage_versions` row for each registered stage.
 4. Records stream one at a time. For each record the runner assigns a record index, then walks the stages in order. For each stage it writes one `record_events` row holding the input value, the output value, a status, and the elapsed time.
 5. A stage returning `None` marks the record dropped. No later stage runs for that record.

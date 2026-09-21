@@ -121,6 +121,21 @@ The screens from [ui-specification.md](ui-specification.md), in the layout chose
 
 **Acceptance:** each screen renders against a real database produced by a real run; the record trace highlights changed fields; the failure banner leads on a failed run.
 
+## Slice 9a — Text input (done)
+
+**Files:** `src/squeegee/io/text_io.py`, `src/squeegee/io/__init__.py`, `src/squeegee/cli.py`, `examples/words_2022.py`, `examples/words-2022.txt`, `tests/test_io.py`, `tests/test_examples.py`
+
+Plain text as an input format, and a way for a script to say how its own file splits into records.
+
+- `text_io.read` is the default `.txt` and `.md` reader: one record per blank-line separated block, each carrying the line it started on.
+- `text_io.blocks_starting_with(pattern)` returns a reader that starts a record at every line matching `pattern` and keeps the following lines, blank ones included. A stage is one record in and one record out, so an entry spanning blank lines can only be held together by the reader.
+- `register_reader` and `clear_readers` in `squeegee.io`, the second called by `cli._import_script` beside `clear_registry`, so two scripts in one process cannot inherit each other's readers.
+- `examples/words_2022.py` is the worked example: a hand-kept journal of 2022 quotes, split on the date each entry opens with, then parsed field by field in ordinary stages.
+
+**Acceptance:** the journal runs end to end at 38 in, 37 out, 1 dropped, 0 errored; an entry whose quote runs across a blank line stays one record; a registered reader wins over the built-in one and `clear_readers` puts the built-in back.
+
+**Not in this slice:** any UI work over the result.
+
 ## Slice 10 — Release
 
 **Files:** `pyproject.toml`, `README.md`, `docs/`
