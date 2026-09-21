@@ -12,6 +12,12 @@ The UI is a local, read-only window onto the SQLite database. It answers three q
 - Icons come from Lucide, imported individually from `lucide-react` so the bundle stays tree-shaken. Icons are decorative support for a text label, never the only affordance.
 - Designed for a laptop screen at 1280px and up. Responsive down to tablet width; phone support is not a goal.
 
+## The chosen layout
+
+Option 2, Split View, from [ui-wireframes/](ui-wireframes/). The runs list is its own screen; everything else lives in one three pane view of a run, because the product requirement is finding the stage responsible for a wrong record in under a minute, and that is hard when stage, records, source, and trace are on four different pages.
+
+State that a developer would want to share or return to lives in the query string: `?stage=2&record=8&status=error&q=n%2Fa&field=amount_cents`. A refresh restores the same view.
+
 ## Screens
 
 ### 1. Runs list

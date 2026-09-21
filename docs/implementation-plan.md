@@ -113,7 +113,7 @@ Vite, React, TypeScript in strict mode, Biome, Vitest. Builds into `src/squeegee
 
 **Acceptance:** `vite build` produces assets the server serves; `biome ci` and `tsc --noEmit` pass; a wheel built without the assets fails loudly.
 
-## Slice 9 — UI screens
+## Slice 9 — UI screens (in progress)
 
 **Files:** `frontend/src/`
 
