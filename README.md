@@ -4,7 +4,7 @@ Observable cleaning and transforming of small data, for the ad-hoc work that lan
 
 You already write the throwaway script. Squeegee records what it did, so that when a value comes out wrong you can see which step did it.
 
-> **Status: specifications only.** There is no working code yet. The design lives in [`docs/`](docs/), and the tooling is in place so that implementation can start against a green repository. Nothing below runs today.
+> **Status: early.** Stages, readers and writers, the append-only store, the runner, the CLI, the read-only HTTP API, and a React shell over it all work today, and [`examples/`](examples/) runs end to end. What remains is the UI itself: the runs list is on screen, the run overview, stage detail, record trace, and field analytics are not. Progress is tracked in [docs/implementation-plan.md](docs/implementation-plan.md).
 
 ## The idea
 
@@ -60,6 +60,7 @@ Not a scheduler, not an orchestrator, not a warehouse tool. If the data matters 
 | [docs/engineering-standards.md](docs/engineering-standards.md) | Linting, typing, testing, pre-commit, CI |
 | [docs/decisions/](docs/decisions/) | Why SQLite and not DuckDB; why a stdlib server and not FastAPI |
 | [docs/ui-wireframes/](docs/ui-wireframes/) | Black and white wireframes, five UX approaches |
+| [docs/example-pipeline.md](docs/example-pipeline.md) | The worked example in `examples/`, and how to use it for validation |
 
 Decisions worth knowing before reading the rest: stages take one record at a time, pipelines are declaration order, the store is append-only SQLite, runs fail fast, and the package has no third-party runtime dependencies.
 
@@ -68,9 +69,18 @@ Squeegee itself is strictly typed and strictly linted. **Your** scripts are not:
 ## Development
 
 ```
-uv sync      # create the environment
-make hooks   # install the pre-commit hooks
-make check   # lint, typecheck, test
+uv sync        # create the environment
+make hooks     # install the pre-commit hooks
+make check     # lint, typecheck, test
+make ui        # build the web UI into the package (needs Node; users never do)
+make ui-check  # biome, tsc --noEmit, vitest
+```
+
+Then try it:
+
+```
+uv run squeegee run examples/clean_orders.py --input examples/orders.csv --output /tmp/clean.csv --db /tmp/squeegee.db
+uv run squeegee ui --db /tmp/squeegee.db
 ```
 
 Every check runs locally. There is no CI, deliberately; see [docs/engineering-standards.md](docs/engineering-standards.md).

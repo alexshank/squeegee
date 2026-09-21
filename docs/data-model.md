@@ -6,6 +6,7 @@
 2. **Self-contained.** The database stores the source text of each stage, so a run can be reviewed without the original script.
 3. **Local.** One SQLite file, by default `.squeegee/squeegee.db` relative to the script being run.
 4. **Readable during writes.** WAL mode, so the UI can read while a run is in progress.
+5. **Durable enough.** `synchronous=NORMAL`, the usual companion to WAL, so a commit does not wait on fsync. The exposure is losing the most recent commits to a power cut, never to a crash of Squeegee itself, and this is a debugging record rather than a ledger. With `FULL` a ten thousand record run takes roughly three times as long.
 
 ## The append-only exception
 

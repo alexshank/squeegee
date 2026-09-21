@@ -1,0 +1,154 @@
+import { AlertTriangle } from "lucide-react";
+import { api } from "./api";
+import { FieldPanel } from "./components/FieldPanel";
+import { RecordsPane } from "./components/RecordsPane";
+import { StagesPane } from "./components/StagesPane";
+import { TracePane } from "./components/TracePane";
+import { integerParam, statusParam } from "./params";
+import { useParamSetter } from "./router";
+import { useApi } from "./useApi";
+import { useRecords } from "./useRecords";
+
+interface Props {
+  runId: number;
+  params: URLSearchParams;
+}
+
+/** Anything that failed to load, rather than a pane that quietly shows nothing. */
+function Problems({ problems }: { problems: (string | null)[] }) {
+  const failures = problems.filter((problem): problem is string => problem !== null);
+  if (failures.length === 0) return null;
+  return (
+    <ul style={{ margin: "0.5rem 0 0", paddingLeft: "1.1rem" }} className="status-error">
+      {failures.map((failure) => (
+        <li key={failure}>{failure}</li>
+      ))}
+    </ul>
+  );
+}
+
+/** The split view: stages, the records of one stage, and one record's trace. */
+export function RunView({ runId, params }: Props) {
+  const setParams = useParamSetter();
+  const position = integerParam(params, "stage") ?? 0;
+  // the record table filters on what a stage did to a record; stepping through
+  // the trace filters on where a record ended up. Two questions, two parameters.
+  const status = statusParam(params, "status");
+  const step = statusParam(params, "step");
+  const search = params.get("q") ?? "";
+  const field = params.get("field");
+  const recordIndex = integerParam(params, "record");
+
+  const run = useApi(() => api.run(runId), [runId]);
+  const stage = useApi(() => api.stage(runId, position), [runId, position]);
+  const fields = useApi(() => api.fields(runId, position), [runId, position]);
+  const records = useRecords(runId, position, status, search);
+  const trace = useApi(
+    () =>
+      recordIndex === null
+        ? Promise.resolve(null)
+        : api.trace(runId, recordIndex, step ? { status: step } : {}),
+    [runId, recordIndex, step],
+  );
+  const fieldDetail = useApi(
+    () => (field === null ? Promise.resolve(null) : api.field(runId, position, field)),
+    [runId, position, field],
+  );
+
+  const failure = run.data?.failure ?? null;
+
+  return (
+    <>
+      <div style={{ padding: "0.6rem 0.75rem", borderBottom: "1px solid var(--border)" }}>
+        <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "baseline" }}>
+          <strong style={{ fontFamily: "var(--mono)" }}>
+            run {runId} · {run.data?.script_path.split("/").pop() ?? "…"}
+          </strong>
+          <span style={{ color: "var(--muted)", fontSize: "0.8rem" }}>
+            {run.data
+              ? `${run.data.records_in} in · ${run.data.records_out} out · ${run.data.records_dropped} dropped · ${run.data.records_errored} errored`
+              : "loading"}
+          </span>
+        </div>
+        {failure && (
+          <p
+            className="status-error"
+            style={{
+              margin: "0.5rem 0 0",
+              border: "1px solid currentColor",
+              padding: "0.4rem 0.6rem",
+              fontSize: "0.82rem",
+            }}
+          >
+            <AlertTriangle size={13} aria-hidden /> failed at stage {failure.stage_position} (
+            {failure.stage_name}), record {failure.record_index}:{" "}
+            <span style={{ fontFamily: "var(--mono)" }}>
+              {failure.error_type}: {failure.error_message}
+            </span>{" "}
+            <button
+              type="button"
+              onClick={() =>
+                setParams({
+                  stage: String(failure.stage_position),
+                  record: String(failure.record_index),
+                })
+              }
+              style={{
+                background: "none",
+                border: "1px solid currentColor",
+                color: "inherit",
+                cursor: "pointer",
+                font: "inherit",
+                fontSize: "0.75rem",
+              }}
+            >
+              show it
+            </button>
+          </p>
+        )}
+        <Problems problems={[run.error, stage.error, fields.error, fieldDetail.error]} />
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "14rem minmax(0, 1fr) 22rem",
+          height: "calc(100vh - 7rem)",
+        }}
+      >
+        <StagesPane
+          stages={run.data?.stages ?? []}
+          position={position}
+          fields={fields.data?.items ?? []}
+          field={field}
+          onStage={(next) => setParams({ stage: String(next), field: null })}
+          onField={(next) => setParams({ field: next })}
+        />
+        <div style={{ display: "flex", flexDirection: "column", minWidth: 0, overflowY: "auto" }}>
+          <RecordsPane
+            stage={stage.data}
+            records={records.items}
+            hasMore={records.hasMore}
+            loading={records.loading}
+            error={records.error}
+            status={status}
+            search={search}
+            recordIndex={recordIndex}
+            onStatus={(next) => setParams({ status: next })}
+            onSearch={(next) => setParams({ q: next || null }, true)}
+            onRecord={(index) => setParams({ record: String(index) })}
+            onLoadMore={records.loadMore}
+          />
+          {fieldDetail.data && <FieldPanel detail={fieldDetail.data} />}
+        </div>
+        <TracePane
+          trace={trace.data}
+          error={trace.error}
+          step={step}
+          onStep={(next) => setParams({ step: next })}
+          onRecord={(index) => setParams({ record: String(index) })}
+        />
+      </div>
+    </>
+  );
+}

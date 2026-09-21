@@ -11,6 +11,7 @@ This directory holds the specification documents for Squeegee. Implementation ag
 | [api.md](api.md) | The read-only HTTP API contract: parameters, response shapes, errors. |
 | [engineering-standards.md](engineering-standards.md) | Linting, formatting, typing, testing, coverage, pre-commit, local checks. |
 | [implementation-plan.md](implementation-plan.md) | Ordered, independently shippable slices with acceptance criteria. |
+| [example-pipeline.md](example-pipeline.md) | The example in `examples/`: what it does, what it prints, how to use it for validation. |
 | [ui-wireframes/](ui-wireframes/) | Wireframes for the UI screens. Generated in the next step. |
 | [decisions/](decisions/) | Architecture decision records: the choice made, why, and when to revisit it. |
 

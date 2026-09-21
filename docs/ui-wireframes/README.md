@@ -14,7 +14,7 @@ Black and white wireframes for the screens defined in [../ui-specification.md](.
 | 4. Command Palette | One keyboard-driven input addresses everything | Jumping straight to a known record index |
 | 5. Record Matrix | The run as a grid: records down, stages across | Seeing failure patterns across a whole run at once |
 
-**Recommended: Option 2, Split View.** The product requirement is that a developer can identify the stage responsible for a wrong record in under a minute, and the split view is the only option where the stage list, the records, the stage source, and the trace are all reachable without navigating. Option 3's funnel is worth folding in as the run overview that leads into it, and Option 1 is the fallback at narrow widths.
+**Chosen: Option 2, Split View**, and now implemented in `frontend/`. The product requirement is that a developer can identify the stage responsible for a wrong record in under a minute, and the split view is the only option where the stage list, the records, the stage source, and the trace are all reachable without navigating. Option 3's funnel is worth folding in as the run overview that leads into it, and Option 1 is the fallback at narrow widths.
 
 Every option shows the same scenario: run 42 of `clean_orders.py`, which failed fast at stage 2, `parse_amount`, on record 4471, with 4,470 records already processed and still reviewable.
 

@@ -1,0 +1,89 @@
+/* one variable block, so light and dark are not two stylesheets */
+:root {
+  --bg: #ffffff;
+  --surface: #f6f6f7;
+  --border: #d8d8dc;
+  --text: #16161a;
+  --muted: #62626c;
+  --accent: #2d6cdf;
+  --ok: #3f7f52;
+  --dropped: #7a6a1f;
+  --error: #b3261e;
+  --code-keyword: #8a2f8a;
+  --code-string: #1d6b3a;
+  --code-comment: #7a7a86;
+  --code-number: #9a5b00;
+  --code-function: #2d4fa2;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --ui: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131316;
+    --surface: #1c1c21;
+    --border: #33333b;
+    --text: #ececf0;
+    --muted: #9b9ba6;
+    --accent: #7aa2f7;
+    --ok: #79b88c;
+    --dropped: #d0b34f;
+    --error: #f08078;
+    --code-keyword: #d6a0e0;
+    --code-string: #9bd1a8;
+    --code-comment: #8a8a96;
+    --code-number: #e0b884;
+    --code-function: #9db8f5;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--ui);
+  font-size: 14px;
+}
+
+code,
+pre,
+.mono {
+  font-family: var(--mono);
+}
+
+a {
+  color: var(--accent);
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+}
+
+main {
+  padding: 1rem;
+}
+
+.status-ok {
+  color: var(--ok);
+}
+.status-dropped {
+  color: var(--dropped);
+}
+.status-error {
+  color: var(--error);
+}

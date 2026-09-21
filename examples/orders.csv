@@ -1,0 +1,11 @@
+Order ID,Email,Amount,Placed On
+1001,ada@example.com,$29.99,2026-09-01
+1002,qa-bot@internal.test,$0.00,2026-09-01
+1003,grace@example.com,"$1,299.00",2026-09-02
+1004,not-an-email,$12.50,2026-09-02
+1005,linus@example.com,$4.00,2026-09-03
+1003,grace@example.com,"$1,299.00",2026-09-03
+1006,margaret@example.com,$130.00,2026-09-04
+1007,qa-runner@internal.test,$5.00,2026-09-04
+1008,katherine@example.com,$78.20,2026-09-05
+1009,barbara@example.com,$9.99,2026-09-05
