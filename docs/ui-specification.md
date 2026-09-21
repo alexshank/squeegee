@@ -16,7 +16,11 @@ The UI is a local, read-only window onto the SQLite database. It answers three q
 
 Option 2, Split View, from [ui-wireframes/](ui-wireframes/). The runs list is its own screen; everything else lives in one three pane view of a run, because the product requirement is finding the stage responsible for a wrong record in under a minute, and that is hard when stage, records, source, and trace are on four different pages.
 
-State that a developer would want to share or return to lives in the query string: `?stage=2&record=8&status=error&q=n%2Fa&field=amount_cents`. A refresh restores the same view.
+State that a developer would want to share or return to lives in the query string: `?stage=2&record=8&status=error&step=error&q=n%2Fa&field=amount_cents`. A refresh restores the same view.
+
+`status` and `step` are deliberately separate. `status` filters the record table on what the selected stage did to each record, while `step` decides which records the trace's previous and next controls walk through, and that filters on where a record finally ended up. Sharing one parameter between them means the next control can land on a record that is not in the table.
+
+Every parameter is validated when it is read. An unparseable stage falls back to the first one, an empty or non-numeric record is treated as no record rather than as record zero, and a status that is not one of the three known values is ignored rather than forwarded to the API.
 
 ## Screens
 
@@ -44,7 +48,7 @@ For one stage in one run: the stage's source code as it ran, rendered per the co
 The source of a stage is first-class content on this screen, not a footnote. It is the thing the developer reads to work out why a value came out wrong, so it gets the same care as the data.
 
 - Monospace throughout, from a stack of `ui-monospace`, `SFMono-Regular`, `Menlo`, `Consolas`, `monospace`, at a size that stays readable next to the data tables.
-- Python syntax highlighting, using `prism-react-renderer` with the Python grammar only. No other languages are registered, so the grammar cost stays small.
+- Python syntax highlighting, using `prism-react-renderer` with the Python grammar only. No other languages are registered, so the grammar cost stays small. The theme is a local object written against the UI's CSS custom properties rather than an imported theme package, so the code block follows the system theme through the same variables as everything else and never ends up light on a dark page.
 - The highlight theme is defined in terms of the same CSS custom properties as the rest of the UI, so light and dark follow the system preference without a second theme package.
 - The source is exactly what ran, byte for byte, as stored in `stage_versions.source_text`. It is never reformatted, re-indented, or prettified by the client.
 - Line numbers on the left, starting at 1 relative to the stage's own source rather than the original file.

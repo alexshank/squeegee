@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { activate } from "../RunsList";
 import type { RecordEvent, StageDetail, Status } from "../api";
 import { StageSource } from "./StageSource";
@@ -24,6 +25,7 @@ interface Props {
 /** The records that passed through the chosen stage, and the code that did it. */
 export function RecordsPane(props: Props) {
   const { stage, records, hasMore, loading, error, status, search, recordIndex } = props;
+  const typed = useDebouncedSearch(search, props.onSearch);
   return (
     <section style={{ overflowY: "auto", padding: "0 0.75rem 1rem" }}>
       <div
@@ -54,9 +56,9 @@ export function RecordsPane(props: Props) {
           </button>
         ))}
         <input
-          value={search}
+          value={typed.value}
           placeholder="search stored JSON"
-          onChange={(event) => props.onSearch(event.target.value)}
+          onChange={(event) => typed.onChange(event.target.value)}
           style={{
             flex: 1,
             minWidth: "12rem",
@@ -169,6 +171,36 @@ export function RecordsPane(props: Props) {
       )}
     </section>
   );
+}
+
+/**
+ * Hold what the developer typed locally and report it once they pause.
+ *
+ * Reporting every keystroke would mean one request and one history entry per
+ * character, which turns the Back button into a way to retype the search.
+ */
+function useDebouncedSearch(search: string, onSearch: (search: string) => void) {
+  const [value, setValue] = useState(search);
+  const [pending, setPending] = useState<string | null>(null);
+
+  useEffect(() => setValue(search), [search]);
+
+  useEffect(() => {
+    if (pending === null) return;
+    const timer = setTimeout(() => {
+      onSearch(pending);
+      setPending(null);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [pending, onSearch]);
+
+  return {
+    value,
+    onChange: (next: string) => {
+      setValue(next);
+      setPending(next);
+    },
+  };
 }
 
 function Preview({ value }: { value: Record<string, unknown> }) {

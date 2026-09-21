@@ -28,20 +28,30 @@ export function useLocation(): Location {
   return location;
 }
 
-export function navigate(path: string, params?: URLSearchParams): void {
+export function navigate(path: string, params?: URLSearchParams, replace = false): void {
   const query = params?.toString();
-  window.history.pushState({}, "", query ? `${path}?${query}` : path);
+  const url = query ? `${path}?${query}` : path;
+  if (replace) window.history.replaceState({}, "", url);
+  else window.history.pushState({}, "", url);
   window.dispatchEvent(new Event("squeegee:navigate"));
 }
 
-/** Update one query parameter, keeping the rest and the current path. */
-export function useParamSetter(): (updates: Record<string, string | null>) => void {
-  return useCallback((updates: Record<string, string | null>) => {
+/**
+ * Update query parameters, keeping the rest and the current path.
+ *
+ * `replace` is for changes a developer would not want to walk back through one
+ * at a time, such as every keystroke in the search box.
+ */
+export function useParamSetter(): (
+  updates: Record<string, string | null>,
+  replace?: boolean,
+) => void {
+  return useCallback((updates: Record<string, string | null>, replace = false) => {
     const params = new URLSearchParams(window.location.search);
     for (const [key, value] of Object.entries(updates)) {
       if (value === null) params.delete(key);
       else params.set(key, value);
     }
-    navigate(window.location.pathname, params);
+    navigate(window.location.pathname, params, replace);
   }, []);
 }

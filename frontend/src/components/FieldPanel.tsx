@@ -50,7 +50,11 @@ function Side({ title, distribution }: { title: string; distribution: Distributi
       {top_values && (
         <ul style={{ listStyle: "none", margin: "0.4rem 0 0", padding: 0, fontSize: "0.75rem" }}>
           {top_values.slice(0, 5).map((entry) => (
-            <li key={String(entry.value)} style={{ fontFamily: "var(--mono)" }}>
+            // SQLite groups 1 and "1" separately, so the type belongs in the key
+            <li
+              key={`${typeof entry.value}:${String(entry.value)}`}
+              style={{ fontFamily: "var(--mono)" }}
+            >
               {String(entry.value)} <span style={{ color: "var(--muted)" }}>× {entry.count}</span>
             </li>
           ))}

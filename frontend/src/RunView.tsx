@@ -1,10 +1,10 @@
 import { AlertTriangle } from "lucide-react";
-import type { Status } from "./api";
 import { api } from "./api";
 import { FieldPanel } from "./components/FieldPanel";
 import { RecordsPane } from "./components/RecordsPane";
 import { StagesPane } from "./components/StagesPane";
 import { TracePane } from "./components/TracePane";
+import { integerParam, statusParam } from "./params";
 import { useParamSetter } from "./router";
 import { useApi } from "./useApi";
 import { useRecords } from "./useRecords";
@@ -14,15 +14,30 @@ interface Props {
   params: URLSearchParams;
 }
 
+/** Anything that failed to load, rather than a pane that quietly shows nothing. */
+function Problems({ problems }: { problems: (string | null)[] }) {
+  const failures = problems.filter((problem): problem is string => problem !== null);
+  if (failures.length === 0) return null;
+  return (
+    <ul style={{ margin: "0.5rem 0 0", paddingLeft: "1.1rem" }} className="status-error">
+      {failures.map((failure) => (
+        <li key={failure}>{failure}</li>
+      ))}
+    </ul>
+  );
+}
+
 /** The split view: stages, the records of one stage, and one record's trace. */
 export function RunView({ runId, params }: Props) {
   const setParams = useParamSetter();
-  const position = Number(params.get("stage") ?? 0);
-  const status = (params.get("status") as Status | null) ?? null;
+  const position = integerParam(params, "stage") ?? 0;
+  // the record table filters on what a stage did to a record; stepping through
+  // the trace filters on where a record ended up. Two questions, two parameters.
+  const status = statusParam(params, "status");
+  const step = statusParam(params, "step");
   const search = params.get("q") ?? "";
   const field = params.get("field");
-  const recordParam = params.get("record");
-  const recordIndex = recordParam === null ? null : Number(recordParam);
+  const recordIndex = integerParam(params, "record");
 
   const run = useApi(() => api.run(runId), [runId]);
   const stage = useApi(() => api.stage(runId, position), [runId, position]);
@@ -32,8 +47,8 @@ export function RunView({ runId, params }: Props) {
     () =>
       recordIndex === null
         ? Promise.resolve(null)
-        : api.trace(runId, recordIndex, status ? { status } : {}),
-    [runId, recordIndex, status],
+        : api.trace(runId, recordIndex, step ? { status: step } : {}),
+    [runId, recordIndex, step],
   );
   const fieldDetail = useApi(
     () => (field === null ? Promise.resolve(null) : api.field(runId, position, field)),
@@ -91,7 +106,7 @@ export function RunView({ runId, params }: Props) {
             </button>
           </p>
         )}
-        {run.error && <p className="status-error">{run.error}</p>}
+        <Problems problems={[run.error, stage.error, fields.error, fieldDetail.error]} />
       </div>
 
       <div
@@ -120,7 +135,7 @@ export function RunView({ runId, params }: Props) {
             search={search}
             recordIndex={recordIndex}
             onStatus={(next) => setParams({ status: next })}
-            onSearch={(next) => setParams({ q: next || null })}
+            onSearch={(next) => setParams({ q: next || null }, true)}
             onRecord={(index) => setParams({ record: String(index) })}
             onLoadMore={records.loadMore}
           />
@@ -128,7 +143,9 @@ export function RunView({ runId, params }: Props) {
         </div>
         <TracePane
           trace={trace.data}
-          status={status}
+          error={trace.error}
+          step={step}
+          onStep={(next) => setParams({ step: next })}
           onRecord={(index) => setParams({ record: String(index) })}
         />
       </div>

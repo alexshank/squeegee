@@ -6,17 +6,25 @@ import { StatusPill } from "./StatusPill";
 
 interface Props {
   trace: Trace | null;
-  status: Status | null;
+  error: string | null;
+  step: Status | null;
+  onStep: (status: Status | null) => void;
   onRecord: (index: number) => void;
 }
 
 /** One record's whole journey, stage by stage, with changed fields marked. */
-export function TracePane({ trace, status, onRecord }: Props) {
+export function TracePane({ trace, error, step, onStep, onRecord }: Props) {
   if (!trace) {
     return (
       <aside style={{ borderLeft: "1px solid var(--border)" }}>
         <PaneHeading>trace</PaneHeading>
-        <Empty>pick a record to trace it through the pipeline</Empty>
+        {error ? (
+          <p className="status-error" style={{ padding: "0 0.6rem" }}>
+            {error}
+          </p>
+        ) : (
+          <Empty>pick a record to trace it through the pipeline</Empty>
+        )}
       </aside>
     );
   }
@@ -24,21 +32,49 @@ export function TracePane({ trace, status, onRecord }: Props) {
   return (
     <aside style={{ borderLeft: "1px solid var(--border)", overflowY: "auto" }}>
       <PaneHeading>{`record ${trace.record_index}`}</PaneHeading>
-      <div style={{ display: "flex", gap: "0.3rem", padding: "0 0.6rem 0.5rem" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: "0.3rem",
+          padding: "0 0.6rem 0.5rem",
+          alignItems: "center",
+        }}
+      >
         <StepButton
           to={trace.previous_record_index}
           onRecord={onRecord}
-          label={`previous ${status ?? "record"}`}
+          label={`previous ${step ?? "record"}`}
         >
           <ChevronLeft size={12} aria-hidden />
         </StepButton>
         <StepButton
           to={trace.next_record_index}
           onRecord={onRecord}
-          label={`next ${status ?? "record"}`}
+          label={`next ${step ?? "record"}`}
         >
           <ChevronRight size={12} aria-hidden />
         </StepButton>
+        {/* stepping follows where a record ended up, which is a different question
+            from what one stage did to it, so it carries its own filter */}
+        <label style={{ color: "var(--muted)", fontSize: "0.72rem" }}>
+          step through{" "}
+          <select
+            value={step ?? ""}
+            onChange={(event) => onStep((event.target.value || null) as Status | null)}
+            style={{
+              background: "var(--bg)",
+              color: "var(--text)",
+              border: "1px solid var(--border)",
+              font: "inherit",
+              fontSize: "0.72rem",
+            }}
+          >
+            <option value="">every record</option>
+            <option value="ok">ok only</option>
+            <option value="dropped">dropped only</option>
+            <option value="error">errored only</option>
+          </select>
+        </label>
       </div>
 
       <div style={{ padding: "0 0.6rem 0.6rem" }}>

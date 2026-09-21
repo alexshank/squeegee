@@ -1,6 +1,20 @@
 import { Check, Copy } from "lucide-react";
-import { Highlight, themes } from "prism-react-renderer";
+import { Highlight, type PrismTheme } from "prism-react-renderer";
 import { useState } from "react";
+
+// written against the UI's custom properties rather than imported, so the code
+// block follows the system theme through the same variables as everything else
+const THEME: PrismTheme = {
+  plain: { color: "var(--text)", backgroundColor: "transparent" },
+  styles: [
+    { types: ["keyword", "builtin", "operator"], style: { color: "var(--code-keyword)" } },
+    { types: ["string", "char"], style: { color: "var(--code-string)" } },
+    { types: ["comment", "prolog", "doctype", "cdata"], style: { color: "var(--code-comment)" } },
+    { types: ["number", "boolean"], style: { color: "var(--code-number)" } },
+    { types: ["function", "class-name", "decorator"], style: { color: "var(--code-function)" } },
+    { types: ["punctuation"], style: { color: "var(--muted)" } },
+  ],
+};
 
 interface Props {
   source: string;
@@ -11,7 +25,6 @@ interface Props {
 /** The stage's source exactly as it ran: monospace, highlighted, line numbered. */
 export function StageSource({ source, name, sha }: Props) {
   const [copied, setCopied] = useState(false);
-  const dark = window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
 
   return (
     <section style={{ border: "1px solid var(--border)", overflow: "hidden" }}>
@@ -55,11 +68,7 @@ export function StageSource({ source, name, sha }: Props) {
           {copied ? "copied" : "copy"}
         </button>
       </header>
-      <Highlight
-        code={source.trimEnd()}
-        language="python"
-        theme={dark ? themes.vsDark : themes.github}
-      >
+      <Highlight code={source.trimEnd()} language="python" theme={THEME}>
         {({ style, tokens, getLineProps, getTokenProps }) => (
           <pre
             style={{
