@@ -55,17 +55,30 @@ const RUN = {
   ],
 };
 
-const STAGE = {
-  ...RUN.stages[1],
-  stage_version_id: 7,
-  input_type: null,
-  output_type: null,
-  source_text: "@stage\ndef parse_amount(record):\n    return record\n",
-  source_sha256: "4b81c2aa",
-  source_language: "python",
-  first_seen_at: "2026-09-14T09:31:02Z",
-  also_used_by_runs: [1, 3],
-};
+const STAGES = [
+  {
+    ...RUN.stages[0],
+    stage_version_id: 3,
+    input_type: null,
+    output_type: null,
+    source_text: "@stage\ndef normalize_headers(record):\n    return record\n",
+    source_sha256: "aaaabbbb",
+    source_language: "python",
+    first_seen_at: "2026-09-14T09:31:02Z",
+    also_used_by_runs: [],
+  },
+  {
+    ...RUN.stages[1],
+    stage_version_id: 7,
+    input_type: null,
+    output_type: null,
+    source_text: "@stage\ndef parse_amount(record):\n    return record\n",
+    source_sha256: "4b81c2aa",
+    source_language: "python",
+    first_seen_at: "2026-09-14T09:31:02Z",
+    also_used_by_runs: [1, 3],
+  },
+];
 
 const RECORDS = {
   items: [
@@ -169,7 +182,9 @@ function stubApi(overrides: Record<string, unknown> = {}) {
     if (/^\/runs\/\d+\/stages\/\d+\/fields\/.+/.test(path)) return respond(FIELD_DETAIL);
     if (/^\/runs\/\d+\/stages\/\d+\/fields/.test(path)) return respond(FIELDS);
     if (/^\/runs\/\d+\/stages\/\d+\/records/.test(path)) return respond(RECORDS);
-    if (/^\/runs\/\d+\/stages\/\d+/.test(path)) return respond(STAGE);
+    const stage = /^\/runs\/\d+\/stages\/(\d+)$/.exec(path);
+    // one stage per position, so asking for the wrong one is visible in the test
+    if (stage) return respond(STAGES[Number(stage[1])] ?? STAGES[0]);
     if (/^\/runs\/\d+\/records\/\d+/.test(path)) return respond(TRACE);
     if (/^\/runs\/\d+/.test(path)) return respond(RUN);
     return respond({ items: [RUN], next_cursor: null, has_more: false });
@@ -217,10 +232,113 @@ test("the three panes are on screen at once", async () => {
   render(<App />);
 
   expect((await screen.findAllByText("0 normalize_headers")).length).toBe(2);
+  expect(await screen.findByText("record 8 at this stage")).toBeDefined();
+  expect(await screen.findByText("record 8")).toBeDefined();
+  // the source is behind the stage's code icon now, not on the page
+  expect(document.querySelector("pre")).toBeNull();
+});
+
+test("the centre panel shows the chosen record at the chosen stage", async () => {
+  window.history.pushState({}, "", "/runs/2?stage=0&record=8");
+  stubApi();
+  render(<App />);
+
+  const panel = (await screen.findByText("record 8 at this stage")).parentElement as HTMLElement;
+
+  expect(within(panel).getByText("input")).toBeDefined();
+  expect(within(panel).getByText("output")).toBeDefined();
+  // stage 0's own input and output, not the whole trace
+  expect(within(panel).getAllByText("Order ID").length).toBe(1);
+  expect(within(panel).getByText("order_id")).toBeDefined();
+});
+
+test("a record that errored shows the reason and a way to the source", async () => {
+  window.history.pushState({}, "", "/runs/2?stage=1&record=8");
+  stubApi();
+  render(<App />);
+
+  const panel = (await screen.findByText("record 8 at this stage")).parentElement as HTMLElement;
+  expect(
+    within(panel).getByText(/ValueError: could not convert string to float: 'n\/a'/),
+  ).toBeDefined();
+
+  fireEvent.click(within(panel).getByText("view source"));
+
+  await waitFor(() => expect(window.location.search).toContain("source=1"));
   // prism splits the source into one span per token, so the header identifies the panel
   expect(await screen.findByText(/parse_amount · 4b81c2aa/)).toBeDefined();
-  expect(document.querySelector("pre")).not.toBeNull();
-  expect(await screen.findByText("record 8")).toBeDefined();
+});
+
+test("a stage's code icon opens its source without moving the selection", async () => {
+  window.history.pushState({}, "", "/runs/2?stage=1&record=8");
+  stubApi();
+  render(<App />);
+
+  fireEvent.click(await screen.findByLabelText("source of 0 normalize_headers"));
+
+  await waitFor(() => expect(window.location.search).toContain("source=0"));
+  // the icon's own stage, not the selected one
+  expect(await screen.findByText(/normalize_headers · aaaabbbb/)).toBeDefined();
+  expect(document.querySelector("dialog")?.open).toBe(true);
+  // reading a stage's code must not move the selection to that stage
+  expect(window.location.search).toContain("stage=1");
+});
+
+test("escape closes the source modal and returns focus to the icon", async () => {
+  window.history.pushState({}, "", "/runs/2?stage=1&record=8");
+  stubApi();
+  render(<App />);
+
+  const icon = await screen.findByLabelText("source of 0 normalize_headers");
+  icon.focus();
+  fireEvent.click(icon);
+  await waitFor(() => expect(document.querySelector("dialog")).not.toBeNull());
+
+  // jsdom does not map Escape to the dialog's cancel event, so fire it directly
+  fireEvent(document.querySelector("dialog") as HTMLElement, new Event("cancel"));
+
+  await waitFor(() => expect(window.location.search).not.toContain("source="));
+  expect(document.activeElement).toBe(icon);
+});
+
+test("a click inside the modal does not dismiss it", async () => {
+  window.history.pushState({}, "", "/runs/2?stage=1&source=1");
+  stubApi();
+  render(<App />);
+
+  fireEvent.click(await screen.findByText(/parse_amount · 4b81c2aa/));
+
+  expect(window.location.search).toContain("source=1");
+  expect(document.querySelector("dialog")).not.toBeNull();
+});
+
+test("closing a modal the user opened walks back instead of stacking history", async () => {
+  window.history.pushState({}, "", "/");
+  window.history.pushState({}, "", "/runs/2?stage=1&record=8");
+  stubApi();
+  render(<App />);
+
+  fireEvent.click(await screen.findByLabelText("source of 0 normalize_headers"));
+  await waitFor(() => expect(window.location.search).toContain("source=0"));
+  fireEvent.click(screen.getByLabelText("close source"));
+  await waitFor(() => expect(window.location.search).not.toContain("source="));
+
+  // replacing on close would leave an entry identical to the one before it, so
+  // this back would land on the run view again rather than the runs list
+  window.history.back();
+
+  await waitFor(() => expect(window.location.pathname).toBe("/"));
+});
+
+test("closing a deep linked source modal clears the parameter", async () => {
+  window.history.pushState({}, "", "/runs/2?stage=1&source=1");
+  stubApi();
+  render(<App />);
+
+  fireEvent.click(await screen.findByLabelText("close source"));
+
+  await waitFor(() => expect(window.location.search).not.toContain("source="));
+  expect(document.querySelector("dialog")).toBeNull();
 });
 
 test("the trace marks the fields a stage changed", async () => {

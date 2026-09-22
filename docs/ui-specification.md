@@ -9,14 +9,14 @@ The UI is a local, read-only window onto the SQLite database. It answers three q
 - Stack: a React single page application, built ahead of time, served by Python's standard library `http.server` alongside a small read-only JSON API. No FastAPI, no Uvicorn, no install extra; the package has no runtime dependencies at all.
 - Users never build anything. The wheel ships the built assets. Node is a contributor requirement only.
 - Components are hand-written with plain CSS. No component library, no CSS framework.
-- Icons come from Lucide, imported individually from `lucide-react` so the bundle stays tree-shaken. Icons are decorative support for a text label, never the only affordance.
+- Icons come from Lucide, imported individually from `lucide-react` so the bundle stays tree-shaken. Icons are decorative support for a text label. A control that repeats on every row of a list may be icon only, because a text label on each row would drown the row's own content, and then it carries both a `title` and an `aria-label` naming the row it belongs to.
 - Designed for a laptop screen at 1280px and up. Responsive down to tablet width; phone support is not a goal.
 
 ## The chosen layout
 
 Option 2, Split View, from [ui-wireframes/](ui-wireframes/). The runs list is its own screen; everything else lives in one three pane view of a run, because the product requirement is finding the stage responsible for a wrong record in under a minute, and that is hard when stage, records, source, and trace are on four different pages.
 
-State that a developer would want to share or return to lives in the query string: `?stage=2&record=8&status=error&step=error&q=n%2Fa&field=amount_cents`. A refresh restores the same view.
+State that a developer would want to share or return to lives in the query string: `?stage=2&record=8&status=error&step=error&q=n%2Fa&field=amount_cents&source=2`. A refresh restores the same view, including an open source modal.
 
 `status` and `step` are deliberately separate. `status` filters the record table on what the selected stage did to each record, while `step` decides which records the trace's previous and next controls walk through, and that filters on where a record finally ended up. Sharing one parameter between them means the next control can land on a record that is not in the table.
 
@@ -41,7 +41,9 @@ Above the stages sits a summary strip with the run metadata and the overall funn
 
 ### 3. Stage detail
 
-For one stage in one run: the stage's source code as it ran, rendered per the code display rules below, its input and output type annotations where the user wrote any, and a paginated table of the records that passed through it. Each row shows the record index, status, and a compact before/after preview. Filters: status (ok, dropped, error) and a text search across the JSON. Selecting a row opens the record trace.
+For one stage in one run: a paginated table of the records that passed through it, and below the table the selected record's input and output for that stage side by side, input on the left and output on the right. Each row of the table shows the record index, status, and duration; the row previews of the stored JSON were dropped because a truncated one-line blob answers no question the panel below does not answer better. Filters: status (ok, dropped, error) and a text search across the JSON. Selecting a row fills the input and output panel and opens the record trace.
+
+The stage's source code, rendered per the code display rules below, and its input and output type annotations where the user wrote any, are opened on demand from the code icon on the stage's row in the stages list, rather than holding permanent vertical space under the table.
 
 #### Code display
 
@@ -54,13 +56,13 @@ The source of a stage is first-class content on this screen, not a footnote. It 
 - Line numbers on the left, starting at 1 relative to the stage's own source rather than the original file.
 - Long lines scroll horizontally. They do not wrap, because wrapped Python misleads about indentation.
 - A copy button yields the raw source with no line numbers.
-- Where a stage raised, the stage source is shown alongside the exception type and message so both are on screen at once.
+- Where a stage raised, the exception type and message take the place of the output, and a view source control next to them opens that stage's source, so the code is one click from the failure.
 
-The same component renders the stage source in the record trace panels, collapsed by default there so the data stays the focus.
+The same component renders the source in the modal opened from a stage's code icon, which is the only place source appears; the record trace panels stay data only.
 
 ### 4. Record trace
 
-The debugging screen. For one record: its source value at the top, then one panel per stage showing input, output, status, and duration. Changed fields are highlighted against the previous stage's value, so the developer can see which stage introduced the wrong value without reading two JSON blobs side by side. Where the record was dropped or errored, the panel shows the reason and the trace ends there. Previous and next controls step through neighbouring records with the same status, which makes scanning a run's errors quick.
+The debugging screen. For one record: its source value at the top, then one panel per stage showing output, status, and duration. Input is not repeated here: each stage's output is the next stage's input, and the stage detail screen shows the selected stage's input beside its output. Changed fields are highlighted against the previous stage's value, so the developer can see which stage introduced the wrong value without reading two JSON blobs side by side. Where the record was dropped or errored, the panel shows the reason and the trace ends there. Previous and next controls step through neighbouring records with the same status, which makes scanning a run's errors quick.
 
 ### 5. Field analytics
 
