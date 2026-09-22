@@ -9,7 +9,7 @@ The UI is a local, read-only window onto the SQLite database. It answers three q
 - Stack: a React single page application, built ahead of time, served by Python's standard library `http.server` alongside a small read-only JSON API. No FastAPI, no Uvicorn, no install extra; the package has no runtime dependencies at all.
 - Users never build anything. The wheel ships the built assets. Node is a contributor requirement only.
 - Components are hand-written with plain CSS. No component library, no CSS framework.
-- Icons come from Lucide, imported individually from `lucide-react` so the bundle stays tree-shaken. Icons are decorative support for a text label, never the only affordance.
+- Icons come from Lucide, imported individually from `lucide-react` so the bundle stays tree-shaken. Icons are decorative support for a text label. A control that repeats on every row of a list may be icon only, because a text label on each row would drown the row's own content, and then it carries both a `title` and an `aria-label` naming the row it belongs to.
 - Designed for a laptop screen at 1280px and up. Responsive down to tablet width; phone support is not a goal.
 
 ## The chosen layout
@@ -62,7 +62,7 @@ The same component renders the source in the modal opened from a stage's code ic
 
 ### 4. Record trace
 
-The debugging screen. For one record: its source value at the top, then one panel per stage showing input, output, status, and duration. Changed fields are highlighted against the previous stage's value, so the developer can see which stage introduced the wrong value without reading two JSON blobs side by side. Where the record was dropped or errored, the panel shows the reason and the trace ends there. Previous and next controls step through neighbouring records with the same status, which makes scanning a run's errors quick.
+The debugging screen. For one record: its source value at the top, then one panel per stage showing output, status, and duration. Input is not repeated here: each stage's output is the next stage's input, and the stage detail screen shows the selected stage's input beside its output. Changed fields are highlighted against the previous stage's value, so the developer can see which stage introduced the wrong value without reading two JSON blobs side by side. Where the record was dropped or errored, the panel shows the reason and the trace ends there. Previous and next controls step through neighbouring records with the same status, which makes scanning a run's errors quick.
 
 ### 5. Field analytics
 

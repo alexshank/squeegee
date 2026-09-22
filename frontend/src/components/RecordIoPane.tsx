@@ -1,44 +1,39 @@
-import { useEffect, useRef } from "react";
 import type { Trace } from "../api";
-import type { Loaded } from "../useApi";
 import { JsonValue } from "./JsonValue";
 import { Empty, PaneHeading } from "./StagesPane";
 
 interface Props {
-  trace: Loaded<Trace | null>;
+  trace: Trace | null;
+  error: string | null;
   position: number;
   recordIndex: number | null;
   onSource: (position: number) => void;
 }
 
 /** What the chosen stage was given and what it returned, for one record. */
-export function RecordIoPane({ trace, position, recordIndex, onSource }: Props) {
-  const pane = useRef<HTMLElement>(null);
-
-  // useApi keeps the last good value visible while the next one loads, so the
-  // trace in hand may still be the record that was selected before this one
-  const loaded = trace.data?.record_index === recordIndex ? trace.data : null;
+export function RecordIoPane({ trace, error, position, recordIndex, onSource }: Props) {
   // the trace carries this stage's input and output, and unlike the records
   // table it is not limited to the page of records that is loaded
-  const event = loaded?.events.find((candidate) => candidate.position === position) ?? null;
-
-  // the table above can be hundreds of rows long, so picking a record far down
-  // it would otherwise change only what is below the fold
-  useEffect(() => {
-    if (recordIndex !== null) pane.current?.scrollIntoView({ block: "nearest" });
-  }, [recordIndex]);
+  const event = trace?.events.find((candidate) => candidate.position === position) ?? null;
 
   return (
-    <section ref={pane} style={{ borderTop: "1px solid var(--border)" }}>
+    <section
+      style={{
+        borderTop: "1px solid var(--border)",
+        // the records table is the one part of this column that may shrink, so
+        // a wide record cannot squeeze it away
+        flexShrink: 0,
+        maxHeight: "50%",
+        overflowY: "auto",
+      }}
+    >
       <PaneHeading>
         {recordIndex === null ? "record" : `record ${recordIndex} at this stage`}
       </PaneHeading>
       {recordIndex === null && <Empty>pick a record to see its input and output</Empty>}
-      {recordIndex !== null && trace.error !== null && (
-        <Empty>this record could not be loaded</Empty>
-      )}
-      {recordIndex !== null && trace.error === null && loaded === null && <Empty>loading…</Empty>}
-      {loaded && !event && <Empty>{`record ${recordIndex} never reached this stage`}</Empty>}
+      {recordIndex !== null && error !== null && <Empty>this record could not be loaded</Empty>}
+      {recordIndex !== null && error === null && trace === null && <Empty>loading…</Empty>}
+      {trace && !event && <Empty>{`record ${recordIndex} never reached this stage`}</Empty>}
       {event && (
         <div
           style={{

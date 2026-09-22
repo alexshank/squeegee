@@ -9,8 +9,3 @@ if (!HTMLDialogElement.prototype.showModal) {
     this.dispatchEvent(new Event("close"));
   };
 }
-
-// jsdom has no layout, so scrolling is a no-op it does not bother to define
-if (!Element.prototype.scrollIntoView) {
-  Element.prototype.scrollIntoView = function scrollIntoView() {};
-}

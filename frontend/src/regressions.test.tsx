@@ -124,6 +124,29 @@ function stubApi(stubs: Stubs = {}) {
   return requested;
 }
 
+function trace(index: number) {
+  return {
+    record_index: index,
+    source: { id: String(index) },
+    final_status: "ok",
+    previous_record_index: null,
+    next_record_index: null,
+    events: [
+      {
+        position: 0,
+        stage_name: "normalize_headers",
+        status: "ok",
+        input: { id: `in-${index}` },
+        output: { id: `out-${index}` },
+        changed_fields: [],
+        error_type: null,
+        error_message: null,
+        duration_us: 20,
+      },
+    ],
+  };
+}
+
 function renderRun(query: string) {
   window.history.pushState({}, "", `/runs/1?${query}`);
   return render(<RunView runId={1} params={new URLSearchParams(query)} />);
@@ -174,6 +197,29 @@ test("a trace that fails to load says so instead of showing the empty state", as
 
   expect(await screen.findByText("run 1 has no record 999")).toBeDefined();
   expect(screen.queryByText("pick a record to trace it through the pipeline")).toBeNull();
+});
+
+test("a trace still loading never appears under the newly chosen record", async () => {
+  const second = deferred<Response>();
+  let call = 0;
+  stubApi({
+    trace: () => (call++ === 0 ? ok(trace(7)) : second.promise),
+    records: () => ok({ items: [event(7), event(8)], next_cursor: null, has_more: false }),
+  });
+  const view = renderRun("stage=0&record=7");
+  await waitFor(() => expect(screen.getByText("in-7")).toBeDefined());
+
+  view.rerender(<RunView runId={1} params={new URLSearchParams("stage=0&record=8")} />);
+
+  // useApi keeps record 7's trace in hand while record 8's request is open
+  expect(screen.getByText("record 8 at this stage")).toBeDefined();
+  expect(screen.queryByText("in-7")).toBeNull();
+  expect(screen.queryByText("record 7")).toBeNull();
+
+  second.resolve({ ok: true, json: () => Promise.resolve(trace(8)) } as Response);
+
+  await waitFor(() => expect(screen.getByText("in-8")).toBeDefined());
+  expect(screen.getByText("record 8")).toBeDefined();
 });
 
 test("an invalid stage position is still reported at the top of the run", async () => {

@@ -16,6 +16,7 @@ export function SourceModal({ runId, position, onClose }: Props) {
   // selected can show its source without moving the selection
   const stage = useApi(() => api.stage(runId, position), [runId, position]);
   const dialog = useRef<HTMLDialogElement>(null);
+  const pressedBackdrop = useRef(false);
 
   // showModal rather than the open attribute, for the focus trap and Escape
   useEffect(() => {
@@ -34,7 +35,14 @@ export function SourceModal({ runId, position, onClose }: Props) {
       ref={dialog}
       aria-label={`source of stage ${position}`}
       onCancel={onClose}
-      onClick={(clicked) => clicked.target === dialog.current && onClose()}
+      // the press decides, not the click: a selection dragged out of the source
+      // reports the dialog as the click target, and so does its own scrollbar
+      onMouseDown={(pressed) => {
+        pressedBackdrop.current = outside(pressed, dialog.current);
+      }}
+      onClick={(clicked) =>
+        pressedBackdrop.current && outside(clicked, dialog.current) && onClose()
+      }
       style={{
         width: "min(60rem, 90vw)",
         maxHeight: "80vh",
@@ -64,6 +72,7 @@ export function SourceModal({ runId, position, onClose }: Props) {
             <X size={12} aria-hidden />
           </button>
         </div>
+        {stage.loading && <p style={{ color: "var(--muted)" }}>loading…</p>}
         {stage.error && <p className="status-error">{stage.error}</p>}
         {stage.data && (
           <>
@@ -81,5 +90,17 @@ export function SourceModal({ runId, position, onClose }: Props) {
         )}
       </div>
     </dialog>
+  );
+}
+
+/** True for a pointer event on the backdrop, rather than on the dialog or its scrollbar. */
+function outside(event: React.MouseEvent, dialog: HTMLDialogElement | null): boolean {
+  if (dialog === null || event.target !== dialog) return false;
+  const box = dialog.getBoundingClientRect();
+  return (
+    event.clientX < box.left ||
+    event.clientX > box.right ||
+    event.clientY < box.top ||
+    event.clientY > box.bottom
   );
 }

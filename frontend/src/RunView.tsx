@@ -1,4 +1,5 @@
 import { AlertTriangle } from "lucide-react";
+import { useRef } from "react";
 import { api } from "./api";
 import { FieldPanel } from "./components/FieldPanel";
 import { RecordIoPane } from "./components/RecordIoPane";
@@ -7,7 +8,7 @@ import { SourceModal } from "./components/SourceModal";
 import { StagesPane } from "./components/StagesPane";
 import { TracePane } from "./components/TracePane";
 import { integerParam, statusParam } from "./params";
-import { useParamSetter } from "./router";
+import { back, useParamSetter } from "./router";
 import { useApi } from "./useApi";
 import { useRecords } from "./useRecords";
 
@@ -58,6 +59,28 @@ export function RunView({ runId, params }: Props) {
   );
 
   const failure = run.data?.failure ?? null;
+  // useApi keeps the last good value visible while the next one loads, so both
+  // panes must ignore a trace that is still the record selected before this one
+  const current = trace.data?.record_index === recordIndex ? trace.data : null;
+  // closing walks the history back when opening pushed onto it, so a shared
+  // link that arrives with the modal open does not gain an entry to walk
+  const pushedSource = useRef(false);
+
+  function openSource(next: number) {
+    pushedSource.current = true;
+    setParams({ source: String(next) });
+  }
+
+  function closeSource() {
+    // replacing instead would leave an entry identical to the one before it,
+    // and Back would look broken
+    if (pushedSource.current) {
+      pushedSource.current = false;
+      back();
+    } else {
+      setParams({ source: null }, true);
+    }
+  }
 
   return (
     <>
@@ -125,7 +148,7 @@ export function RunView({ runId, params }: Props) {
           field={field}
           onStage={(next) => setParams({ stage: String(next), field: null })}
           onField={(next) => setParams({ field: next })}
-          onSource={(next) => setParams({ source: String(next) })}
+          onSource={(next) => openSource(next)}
         />
         <div style={{ display: "flex", flexDirection: "column", minWidth: 0, overflowY: "auto" }}>
           <RecordsPane
@@ -142,15 +165,17 @@ export function RunView({ runId, params }: Props) {
             onLoadMore={records.loadMore}
           />
           <RecordIoPane
-            trace={trace}
+            trace={current}
+            error={trace.error}
             position={position}
             recordIndex={recordIndex}
-            onSource={(next) => setParams({ source: String(next) })}
+            onSource={(next) => openSource(next)}
           />
           {fieldDetail.data && <FieldPanel detail={fieldDetail.data} />}
         </div>
         <TracePane
-          trace={trace.data}
+          trace={current}
+          loading={trace.loading}
           error={trace.error}
           step={step}
           onStep={(next) => setParams({ step: next })}
@@ -158,12 +183,7 @@ export function RunView({ runId, params }: Props) {
         />
       </div>
       {sourcePosition !== null && (
-        <SourceModal
-          runId={runId}
-          position={sourcePosition}
-          // replace, so closing the modal is not a history entry to walk back through
-          onClose={() => setParams({ source: null }, true)}
-        />
+        <SourceModal runId={runId} position={sourcePosition} onClose={closeSource} />
       )}
     </>
   );

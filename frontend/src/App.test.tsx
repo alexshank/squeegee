@@ -312,7 +312,25 @@ test("a click inside the modal does not dismiss it", async () => {
   expect(document.querySelector("dialog")).not.toBeNull();
 });
 
-test("closing the source modal clears the parameter", async () => {
+test("closing a modal the user opened walks back instead of stacking history", async () => {
+  window.history.pushState({}, "", "/");
+  window.history.pushState({}, "", "/runs/2?stage=1&record=8");
+  stubApi();
+  render(<App />);
+
+  fireEvent.click(await screen.findByLabelText("source of 0 normalize_headers"));
+  await waitFor(() => expect(window.location.search).toContain("source=0"));
+  fireEvent.click(screen.getByLabelText("close source"));
+  await waitFor(() => expect(window.location.search).not.toContain("source="));
+
+  // replacing on close would leave an entry identical to the one before it, so
+  // this back would land on the run view again rather than the runs list
+  window.history.back();
+
+  await waitFor(() => expect(window.location.pathname).toBe("/"));
+});
+
+test("closing a deep linked source modal clears the parameter", async () => {
   window.history.pushState({}, "", "/runs/2?stage=1&source=1");
   stubApi();
   render(<App />);
