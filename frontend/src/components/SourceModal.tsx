@@ -17,9 +17,16 @@ export function SourceModal({ runId, position, onClose }: Props) {
   const stage = useApi(() => api.stage(runId, position), [runId, position]);
   const dialog = useRef<HTMLDialogElement>(null);
 
-  // showModal rather than the open attribute, for the focus trap and Escape;
-  // optional because jsdom does not implement it and the tests still render
-  useEffect(() => dialog.current?.showModal?.(), []);
+  // showModal rather than the open attribute, for the focus trap and Escape
+  useEffect(() => {
+    const opener = document.activeElement;
+    dialog.current?.showModal();
+    return () => {
+      dialog.current?.close();
+      // the icon that opened this is where the keyboard was, so send it back
+      if (opener instanceof HTMLElement) opener.focus();
+    };
+  }, []);
 
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: Escape and the close button are the keyboard paths; this handler only adds click-outside
@@ -34,41 +41,45 @@ export function SourceModal({ runId, position, onClose }: Props) {
         background: "var(--bg)",
         color: "var(--text)",
         border: "1px solid var(--border)",
-        padding: "0.75rem",
+        // no padding on the dialog itself: padding is part of its box, so a
+        // click on it would read as a click outside and close the modal
+        padding: 0,
       }}
     >
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="close source"
-          style={{
-            background: "none",
-            border: "1px solid var(--border)",
-            color: "var(--muted)",
-            cursor: "pointer",
-            font: "inherit",
-            padding: "0.1rem 0.3rem",
-          }}
-        >
-          <X size={12} aria-hidden />
-        </button>
+      <div style={{ padding: "0.75rem" }}>
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="close source"
+            style={{
+              background: "none",
+              border: "1px solid var(--border)",
+              color: "var(--muted)",
+              cursor: "pointer",
+              font: "inherit",
+              padding: "0.1rem 0.3rem",
+            }}
+          >
+            <X size={12} aria-hidden />
+          </button>
+        </div>
+        {stage.error && <p className="status-error">{stage.error}</p>}
+        {stage.data && (
+          <>
+            <StageSource
+              source={stage.data.source_text}
+              name={stage.data.name}
+              sha={stage.data.source_sha256}
+            />
+            <p style={{ color: "var(--muted)", fontSize: "0.75rem", marginBottom: 0 }}>
+              {stage.data.input_type ?? "unannotated"} → {stage.data.output_type ?? "unannotated"}
+              {stage.data.also_used_by_runs.length > 0 &&
+                ` · unchanged since runs ${stage.data.also_used_by_runs.join(", ")}`}
+            </p>
+          </>
+        )}
       </div>
-      {stage.error && <p className="status-error">{stage.error}</p>}
-      {stage.data && (
-        <>
-          <StageSource
-            source={stage.data.source_text}
-            name={stage.data.name}
-            sha={stage.data.source_sha256}
-          />
-          <p style={{ color: "var(--muted)", fontSize: "0.75rem", marginBottom: 0 }}>
-            {stage.data.input_type ?? "unannotated"} → {stage.data.output_type ?? "unannotated"}
-            {stage.data.also_used_by_runs.length > 0 &&
-              ` · unchanged since runs ${stage.data.also_used_by_runs.join(", ")}`}
-          </p>
-        </>
-      )}
     </dialog>
   );
 }

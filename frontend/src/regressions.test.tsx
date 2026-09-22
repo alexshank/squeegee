@@ -176,6 +176,19 @@ test("a trace that fails to load says so instead of showing the empty state", as
   expect(screen.queryByText("pick a record to trace it through the pipeline")).toBeNull();
 });
 
+test("an invalid stage position is still reported at the top of the run", async () => {
+  vi.stubGlobal("fetch", (url: string) => {
+    if (url.includes("/fields")) return failed("run 1 has no stage at position 9");
+    if (url.includes("/records")) return ok({ items: [], next_cursor: null, has_more: false });
+    return ok(RUN);
+  });
+  renderRun("stage=9");
+
+  // the run view no longer asks for stage detail, so the field request is what
+  // now carries the message to the problems list
+  expect(await screen.findByText("run 1 has no stage at position 9")).toBeDefined();
+});
+
 test("a stage whose source fails to load says so in the modal", async () => {
   vi.stubGlobal("fetch", (url: string) => {
     if (/\/stages\/\d+$/.test(url)) return failed("run 1 has no stage at position 9");

@@ -142,7 +142,7 @@ export function RunView({ runId, params }: Props) {
             onLoadMore={records.loadMore}
           />
           <RecordIoPane
-            trace={trace.data}
+            trace={trace}
             position={position}
             recordIndex={recordIndex}
             onSource={(next) => setParams({ source: String(next) })}
@@ -161,7 +161,8 @@ export function RunView({ runId, params }: Props) {
         <SourceModal
           runId={runId}
           position={sourcePosition}
-          onClose={() => setParams({ source: null })}
+          // replace, so closing the modal is not a history entry to walk back through
+          onClose={() => setParams({ source: null }, true)}
         />
       )}
     </>

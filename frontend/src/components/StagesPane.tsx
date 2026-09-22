@@ -39,7 +39,8 @@ export function StagesPane({ stages, position, fields, field, onStage, onField, 
             <button
               type="button"
               onClick={() => onSource(stage.position)}
-              aria-label={`source of ${stage.name}`}
+              aria-label={`source of ${stage.position} ${stage.name}`}
+              title={`source of ${stage.name}`}
               style={{
                 background: "none",
                 border: 0,

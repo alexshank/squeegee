@@ -16,7 +16,7 @@ The UI is a local, read-only window onto the SQLite database. It answers three q
 
 Option 2, Split View, from [ui-wireframes/](ui-wireframes/). The runs list is its own screen; everything else lives in one three pane view of a run, because the product requirement is finding the stage responsible for a wrong record in under a minute, and that is hard when stage, records, source, and trace are on four different pages.
 
-State that a developer would want to share or return to lives in the query string: `?stage=2&record=8&status=error&step=error&q=n%2Fa&field=amount_cents`. A refresh restores the same view.
+State that a developer would want to share or return to lives in the query string: `?stage=2&record=8&status=error&step=error&q=n%2Fa&field=amount_cents&source=2`. A refresh restores the same view, including an open source modal.
 
 `status` and `step` are deliberately separate. `status` filters the record table on what the selected stage did to each record, while `step` decides which records the trace's previous and next controls walk through, and that filters on where a record finally ended up. Sharing one parameter between them means the next control can land on a record that is not in the table.
 
@@ -58,7 +58,7 @@ The source of a stage is first-class content on this screen, not a footnote. It 
 - A copy button yields the raw source with no line numbers.
 - Where a stage raised, the exception type and message take the place of the output, and a view source control next to them opens that stage's source, so the code is one click from the failure.
 
-The same component renders the stage source in the record trace panels, collapsed by default there so the data stays the focus.
+The same component renders the source in the modal opened from a stage's code icon, which is the only place source appears; the record trace panels stay data only.
 
 ### 4. Record trace
 
