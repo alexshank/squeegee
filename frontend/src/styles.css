@@ -78,6 +78,11 @@ main {
   padding: 1rem;
 }
 
+/* the browser default backdrop is barely visible over a light page */
+dialog::backdrop {
+  background: rgb(0 0 0 / 0.5);
+}
+
 .status-ok {
   color: var(--ok);
 }

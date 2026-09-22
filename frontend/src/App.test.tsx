@@ -217,10 +217,65 @@ test("the three panes are on screen at once", async () => {
   render(<App />);
 
   expect((await screen.findAllByText("0 normalize_headers")).length).toBe(2);
+  expect(await screen.findByText("record 8 at this stage")).toBeDefined();
+  expect(await screen.findByText("record 8")).toBeDefined();
+  // the source is behind the stage's code icon now, not on the page
+  expect(document.querySelector("pre")).toBeNull();
+});
+
+test("the centre panel shows the chosen record at the chosen stage", async () => {
+  window.history.pushState({}, "", "/runs/2?stage=0&record=8");
+  stubApi();
+  render(<App />);
+
+  const panel = (await screen.findByText("record 8 at this stage")).parentElement as HTMLElement;
+
+  expect(within(panel).getByText("input")).toBeDefined();
+  expect(within(panel).getByText("output")).toBeDefined();
+  // stage 0's own input and output, not the whole trace
+  expect(within(panel).getAllByText("Order ID").length).toBe(1);
+  expect(within(panel).getByText("order_id")).toBeDefined();
+});
+
+test("a record that errored shows the reason and a way to the source", async () => {
+  window.history.pushState({}, "", "/runs/2?stage=1&record=8");
+  stubApi();
+  render(<App />);
+
+  const panel = (await screen.findByText("record 8 at this stage")).parentElement as HTMLElement;
+  expect(
+    within(panel).getByText(/ValueError: could not convert string to float: 'n\/a'/),
+  ).toBeDefined();
+
+  fireEvent.click(within(panel).getByText("view source"));
+
+  await waitFor(() => expect(window.location.search).toContain("source=1"));
   // prism splits the source into one span per token, so the header identifies the panel
   expect(await screen.findByText(/parse_amount · 4b81c2aa/)).toBeDefined();
-  expect(document.querySelector("pre")).not.toBeNull();
-  expect(await screen.findByText("record 8")).toBeDefined();
+});
+
+test("a stage's code icon opens its source without moving the selection", async () => {
+  window.history.pushState({}, "", "/runs/2?stage=1&record=8");
+  stubApi();
+  render(<App />);
+
+  fireEvent.click(await screen.findByLabelText("source of normalize_headers"));
+
+  await waitFor(() => expect(window.location.search).toContain("source=0"));
+  await waitFor(() => expect(document.querySelector("dialog pre")).not.toBeNull());
+  // reading a stage's code must not move the selection to that stage
+  expect(window.location.search).toContain("stage=1");
+});
+
+test("closing the source modal clears the parameter", async () => {
+  window.history.pushState({}, "", "/runs/2?stage=1&source=1");
+  stubApi();
+  render(<App />);
+
+  fireEvent.click(await screen.findByLabelText("close source"));
+
+  await waitFor(() => expect(window.location.search).not.toContain("source="));
+  expect(document.querySelector("dialog")).toBeNull();
 });
 
 test("the trace marks the fields a stage changed", async () => {

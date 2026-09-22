@@ -1,7 +1,9 @@
 import { AlertTriangle } from "lucide-react";
 import { api } from "./api";
 import { FieldPanel } from "./components/FieldPanel";
+import { RecordIoPane } from "./components/RecordIoPane";
 import { RecordsPane } from "./components/RecordsPane";
+import { SourceModal } from "./components/SourceModal";
 import { StagesPane } from "./components/StagesPane";
 import { TracePane } from "./components/TracePane";
 import { integerParam, statusParam } from "./params";
@@ -38,9 +40,9 @@ export function RunView({ runId, params }: Props) {
   const search = params.get("q") ?? "";
   const field = params.get("field");
   const recordIndex = integerParam(params, "record");
+  const sourcePosition = integerParam(params, "source");
 
   const run = useApi(() => api.run(runId), [runId]);
-  const stage = useApi(() => api.stage(runId, position), [runId, position]);
   const fields = useApi(() => api.fields(runId, position), [runId, position]);
   const records = useRecords(runId, position, status, search);
   const trace = useApi(
@@ -106,7 +108,7 @@ export function RunView({ runId, params }: Props) {
             </button>
           </p>
         )}
-        <Problems problems={[run.error, stage.error, fields.error, fieldDetail.error]} />
+        <Problems problems={[run.error, fields.error, fieldDetail.error]} />
       </div>
 
       <div
@@ -123,10 +125,10 @@ export function RunView({ runId, params }: Props) {
           field={field}
           onStage={(next) => setParams({ stage: String(next), field: null })}
           onField={(next) => setParams({ field: next })}
+          onSource={(next) => setParams({ source: String(next) })}
         />
         <div style={{ display: "flex", flexDirection: "column", minWidth: 0, overflowY: "auto" }}>
           <RecordsPane
-            stage={stage.data}
             records={records.items}
             hasMore={records.hasMore}
             loading={records.loading}
@@ -139,6 +141,12 @@ export function RunView({ runId, params }: Props) {
             onRecord={(index) => setParams({ record: String(index) })}
             onLoadMore={records.loadMore}
           />
+          <RecordIoPane
+            trace={trace.data}
+            position={position}
+            recordIndex={recordIndex}
+            onSource={(next) => setParams({ source: String(next) })}
+          />
           {fieldDetail.data && <FieldPanel detail={fieldDetail.data} />}
         </div>
         <TracePane
@@ -149,6 +157,13 @@ export function RunView({ runId, params }: Props) {
           onRecord={(index) => setParams({ record: String(index) })}
         />
       </div>
+      {sourcePosition !== null && (
+        <SourceModal
+          runId={runId}
+          position={sourcePosition}
+          onClose={() => setParams({ source: null })}
+        />
+      )}
     </>
   );
 }

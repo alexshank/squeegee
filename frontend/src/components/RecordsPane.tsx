@@ -1,14 +1,12 @@
 import { useEffect, useState } from "react";
 import { activate } from "../RunsList";
-import type { RecordEvent, StageDetail, Status } from "../api";
-import { StageSource } from "./StageSource";
-import { Empty, PaneHeading } from "./StagesPane";
+import type { RecordEvent, Status } from "../api";
+import { Empty } from "./StagesPane";
 import { StatusPill } from "./StatusPill";
 
 const STATUSES: (Status | null)[] = [null, "ok", "dropped", "error"];
 
 interface Props {
-  stage: StageDetail | null;
   records: RecordEvent[];
   hasMore: boolean;
   loading: boolean;
@@ -22,9 +20,9 @@ interface Props {
   onLoadMore: () => void;
 }
 
-/** The records that passed through the chosen stage, and the code that did it. */
+/** The records that passed through the chosen stage. */
 export function RecordsPane(props: Props) {
-  const { stage, records, hasMore, loading, error, status, search, recordIndex } = props;
+  const { records, hasMore, loading, error, status, search, recordIndex } = props;
   const typed = useDebouncedSearch(search, props.onSearch);
   return (
     <section style={{ overflowY: "auto", padding: "0 0.75rem 1rem" }}>
@@ -80,8 +78,6 @@ export function RecordsPane(props: Props) {
             <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: "0.7rem" }}>
               <th style={{ padding: "0.25rem" }}>#</th>
               <th style={{ padding: "0.25rem" }}>status</th>
-              <th style={{ padding: "0.25rem" }}>input</th>
-              <th style={{ padding: "0.25rem" }}>output</th>
               <th style={{ padding: "0.25rem", textAlign: "right" }}>time</th>
             </tr>
           </thead>
@@ -103,18 +99,6 @@ export function RecordsPane(props: Props) {
                 </td>
                 <td style={{ padding: "0.25rem" }}>
                   <StatusPill status={event.status} />
-                </td>
-                <td style={{ padding: "0.25rem", maxWidth: "16rem" }}>
-                  <Preview value={event.input} />
-                </td>
-                <td style={{ padding: "0.25rem", maxWidth: "16rem" }}>
-                  {event.output ? (
-                    <Preview value={event.output} />
-                  ) : (
-                    <span className={`status-${event.status}`}>
-                      {event.error_message ?? "dropped"}
-                    </span>
-                  )}
                 </td>
                 <td style={{ padding: "0.25rem", textAlign: "right", fontFamily: "var(--mono)" }}>
                   {event.duration_us}µs
@@ -157,18 +141,6 @@ export function RecordsPane(props: Props) {
           </button>
         )}
       </div>
-
-      {stage && (
-        <>
-          <PaneHeading>source</PaneHeading>
-          <StageSource source={stage.source_text} name={stage.name} sha={stage.source_sha256} />
-          <p style={{ color: "var(--muted)", fontSize: "0.75rem" }}>
-            {stage.input_type ?? "unannotated"} → {stage.output_type ?? "unannotated"}
-            {stage.also_used_by_runs.length > 0 &&
-              ` · unchanged since runs ${stage.also_used_by_runs.join(", ")}`}
-          </p>
-        </>
-      )}
     </section>
   );
 }
@@ -201,22 +173,4 @@ function useDebouncedSearch(search: string, onSearch: (search: string) => void) 
       setPending(next);
     },
   };
-}
-
-function Preview({ value }: { value: Record<string, unknown> }) {
-  return (
-    <span
-      style={{
-        fontFamily: "var(--mono)",
-        fontSize: "0.75rem",
-        color: "var(--muted)",
-        display: "block",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-      }}
-    >
-      {JSON.stringify(value)}
-    </span>
-  );
 }

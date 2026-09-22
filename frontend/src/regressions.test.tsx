@@ -176,14 +176,14 @@ test("a trace that fails to load says so instead of showing the empty state", as
   expect(screen.queryByText("pick a record to trace it through the pipeline")).toBeNull();
 });
 
-test("a stage that fails to load is reported at the top of the run", async () => {
+test("a stage whose source fails to load says so in the modal", async () => {
   vi.stubGlobal("fetch", (url: string) => {
     if (/\/stages\/\d+$/.test(url)) return failed("run 1 has no stage at position 9");
     if (url.includes("/records")) return ok({ items: [], next_cursor: null, has_more: false });
     if (url.includes("/fields")) return ok({ records_considered: 0, items: [] });
     return ok(RUN);
   });
-  renderRun("stage=9");
+  renderRun("stage=0&source=9");
 
   expect(await screen.findByText("run 1 has no stage at position 9")).toBeDefined();
 });

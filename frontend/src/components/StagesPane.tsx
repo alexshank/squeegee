@@ -1,3 +1,4 @@
+import { Code } from "lucide-react";
 import type { FieldStats, StageSummary } from "../api";
 
 interface Props {
@@ -7,28 +8,49 @@ interface Props {
   field: string | null;
   onStage: (position: number) => void;
   onField: (field: string | null) => void;
+  onSource: (position: number) => void;
 }
 
 /** The pipeline in declaration order, and the fields the chosen stage produced. */
-export function StagesPane({ stages, position, fields, field, onStage, onField }: Props) {
+export function StagesPane({ stages, position, fields, field, onStage, onField, onSource }: Props) {
   return (
     <aside style={{ borderRight: "1px solid var(--border)", overflowY: "auto" }}>
       <PaneHeading>stages</PaneHeading>
       <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
         {stages.map((stage) => (
-          <li key={stage.position}>
+          <li key={stage.position} style={{ display: "flex", alignItems: "center" }}>
             <button
               type="button"
               onClick={() => onStage(stage.position)}
               aria-current={stage.position === position}
               style={rowStyle(stage.position === position)}
             >
-              <span style={{ fontFamily: "var(--mono)" }}>{`${stage.position} ${stage.name}`}</span>
+              <span
+                style={{ fontFamily: "var(--mono)", overflowWrap: "anywhere" }}
+              >{`${stage.position} ${stage.name}`}</span>
               <small style={{ color: "var(--muted)" }}>
                 {stage.records_in === 0
                   ? "not reached"
                   : `${stage.records_ok} ok · ${stage.records_dropped} dropped · ${stage.records_errored} errored`}
               </small>
+            </button>
+            {/* a sibling of the row rather than a child, because reading a
+                stage's code is not the same as selecting that stage */}
+            <button
+              type="button"
+              onClick={() => onSource(stage.position)}
+              aria-label={`source of ${stage.name}`}
+              style={{
+                background: "none",
+                border: 0,
+                color: "var(--muted)",
+                cursor: "pointer",
+                padding: "0.35rem 0.5rem",
+                // a long stage name wraps; the icon must not be squeezed away
+                flexShrink: 0,
+              }}
+            >
+              <Code size={13} aria-hidden />
             </button>
           </li>
         ))}
@@ -82,6 +104,8 @@ function rowStyle(selected: boolean) {
   return {
     display: "block",
     width: "100%",
+    // min-content would otherwise keep a long stage name from yielding to the icon
+    minWidth: 0,
     textAlign: "left" as const,
     background: selected ? "var(--surface)" : "none",
     border: 0,

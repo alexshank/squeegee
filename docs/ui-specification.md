@@ -41,7 +41,9 @@ Above the stages sits a summary strip with the run metadata and the overall funn
 
 ### 3. Stage detail
 
-For one stage in one run: the stage's source code as it ran, rendered per the code display rules below, its input and output type annotations where the user wrote any, and a paginated table of the records that passed through it. Each row shows the record index, status, and a compact before/after preview. Filters: status (ok, dropped, error) and a text search across the JSON. Selecting a row opens the record trace.
+For one stage in one run: a paginated table of the records that passed through it, and below the table the selected record's input and output for that stage side by side, input on the left and output on the right. Each row of the table shows the record index, status, and duration; the row previews of the stored JSON were dropped because a truncated one-line blob answers no question the panel below does not answer better. Filters: status (ok, dropped, error) and a text search across the JSON. Selecting a row fills the input and output panel and opens the record trace.
+
+The stage's source code, rendered per the code display rules below, and its input and output type annotations where the user wrote any, are opened on demand from the code icon on the stage's row in the stages list, rather than holding permanent vertical space under the table.
 
 #### Code display
 
@@ -54,7 +56,7 @@ The source of a stage is first-class content on this screen, not a footnote. It 
 - Line numbers on the left, starting at 1 relative to the stage's own source rather than the original file.
 - Long lines scroll horizontally. They do not wrap, because wrapped Python misleads about indentation.
 - A copy button yields the raw source with no line numbers.
-- Where a stage raised, the stage source is shown alongside the exception type and message so both are on screen at once.
+- Where a stage raised, the exception type and message take the place of the output, and a view source control next to them opens that stage's source, so the code is one click from the failure.
 
 The same component renders the stage source in the record trace panels, collapsed by default there so the data stays the focus.
 
