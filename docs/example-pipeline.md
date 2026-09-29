@@ -125,3 +125,36 @@ squeegee run examples/clean_orders.py --input examples/orders_with_a_bad_row.csv
 ```
 
 Three runs of one script, with two different inputs and one edited option set, in a single append-only database.
+
+## A second example: a text file
+
+[`examples/words_2022.py`](../examples/words_2022.py) runs over [`examples/words-2022.txt`](../examples/words-2022.txt), a journal of quotes somebody kept by hand through 2022. It is here because it is the opposite of `orders.csv`: no header row, no delimiter, and entries that run across blank lines.
+
+Blank lines separate entries in most of the file, but not in all of it — three entries contain blank lines of their own, and one holds two quotes under a single date. A stage takes one record and returns one record, so it cannot join a continuation line onto the record before it. The split therefore has to happen in the reader, and the script says so itself:
+
+```python
+register_reader(".txt", blocks_starting_with(r"\d{1,2}/\d{1,2}"))
+```
+
+A new record starts at every line that opens with a date; everything after it, blank lines included, belongs to that record. The text before the first date — the file's title — is yielded as a record too, rather than dropped silently, and the first stage drops it where the run can show it happening.
+
+Everything else is an ordinary stage:
+
+| Position | Stage | What it does |
+| --- | --- | --- |
+| 0 | `drop_the_title` | Returns `None` for the one block that does not begin with a date |
+| 1 | `split_the_date_from_the_body` | Separates the leading date from the entry, collapsing the whitespace an entry spanning blank lines carries |
+| 2 | `parse_the_date` | `01/01`, `11/17/22` and `11/21/2022` all become an ISO date |
+| 3 | `collect_the_quotes` | Pulls out each quoted passage; an entry written without quote marks keeps its whole body as one passage |
+| 4 | `attribute_each_quote` | Tidies the attribution that follows each closing quote |
+
+```
+squeegee run examples/words_2022.py --input examples/words-2022.txt --output /tmp/words-2022.json --db /tmp/squeegee-words.db
+```
+
+```
+run 1 finished: 38 in, 37 out, 1 dropped, 0 errored, 0.03s
+recorded in /tmp/squeegee-words.db
+```
+
+Thirty-eight blocks in, because the title is a record of its own, and thirty-seven dated entries out. The output is JSON rather than CSV: a record holds a list of quotes, and the CSV writer would flatten it into a string.

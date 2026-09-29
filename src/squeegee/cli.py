@@ -15,6 +15,7 @@ from typing import Any
 
 from squeegee import __version__
 from squeegee.errors import SqueegeeError
+from squeegee.io import clear_readers
 from squeegee.runner import RunResult, run
 from squeegee.stages import clear_registry
 from squeegee.store import list_runs, run_summary
@@ -163,6 +164,7 @@ def _import_script(script: Path) -> None:
     if not script.is_file():
         raise SqueegeeError(f"script {script} does not exist")
     clear_registry()
+    clear_readers()
     # the script's own directory goes first, so it can import its neighbours
     sys.path.insert(0, str(script.parent))
     specification = importlib.util.spec_from_file_location(script.stem, script)

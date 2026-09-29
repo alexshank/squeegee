@@ -36,6 +36,11 @@ export function navigate(path: string, params?: URLSearchParams, replace = false
   window.dispatchEvent(new Event("squeegee:navigate"));
 }
 
+/** Walk back one entry, for state that was pushed rather than navigated to. */
+export function back(): void {
+  window.history.back();
+}
+
 /**
  * Update query parameters, keeping the rest and the current path.
  *

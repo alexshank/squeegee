@@ -1,8 +1,9 @@
 """Readers and writers, resolved by file extension.
 
-Only CSV and JSON are supported, which covers what lands on a developer's
-desk during an ordinary day. Adding a format means adding a module here and
-one entry to the two tables below.
+CSV, JSON and plain text cover what lands on a developer's desk during an
+ordinary day. Adding a format means adding a module here and one entry to the
+two tables below. A file whose shape only its own script knows is handled
+instead by calling ``register_reader``.
 """
 
 from collections.abc import Callable, Iterable, Iterator
@@ -10,7 +11,7 @@ from pathlib import Path
 from typing import Any, TypeVar
 
 from squeegee.errors import FormatError
-from squeegee.io import csv_io, json_io
+from squeegee.io import csv_io, json_io, text_io
 
 Record = dict[str, Any]
 Resolved = TypeVar("Resolved")
@@ -20,7 +21,12 @@ _READERS = {
     ".json": json_io.read,
     ".jsonl": json_io.read,
     ".ndjson": json_io.read,
+    ".txt": text_io.read,
+    ".md": text_io.read,
 }
+
+# a reader a script registered for itself, which wins over the table above
+_CUSTOM_READERS: dict[str, Callable[[Path], Iterator[Record]]] = {}
 
 _WRITERS = {
     ".csv": csv_io.write,
@@ -50,7 +56,25 @@ def write_records(path: Path, records: Iterable[Record]) -> int:
 
 def reader_for(path: Path) -> Callable[[Path], Iterator[Record]]:
     """Return the reader for ``path``, so a run can fail before it starts."""
-    return _resolve(_READERS, path)
+    return _resolve({**_READERS, **_CUSTOM_READERS}, path)
+
+
+def register_reader(suffix: str, reader: Callable[[Path], Iterator[Record]]) -> None:
+    """Read ``suffix`` with ``reader`` for the rest of this run.
+
+    A script calls this when its input has a shape no extension can imply, such
+    as a text file whose entries are delimited by something only that file uses.
+    """
+    _CUSTOM_READERS[suffix.lower()] = reader
+
+
+def clear_readers() -> None:
+    """Forget every registered reader.
+
+    Two scripts run in one process, which the tests do constantly, would
+    otherwise inherit each other's readers.
+    """
+    _CUSTOM_READERS.clear()
 
 
 def writer_for(path: Path) -> Callable[[Path, Iterable[Record]], int]:

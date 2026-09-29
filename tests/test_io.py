@@ -7,7 +7,8 @@ from pathlib import Path
 import pytest
 
 from squeegee.errors import FormatError
-from squeegee.io import read_records, write_records
+from squeegee.io import clear_readers, read_records, register_reader, write_records
+from squeegee.io.text_io import blocks_starting_with
 
 RECORDS = [
     {"id": "1", "amount": "$29.99"},
@@ -121,3 +122,38 @@ def test_an_empty_json_file_reads_as_no_records(tmp_path: Path) -> None:
     path.write_text("   \n\n")
 
     assert list(read_records(path)) == []
+
+
+def test_a_text_file_reads_as_one_record_per_block(tmp_path: Path) -> None:
+    path = tmp_path / "notes.txt"
+    path.write_text("first note\n\n\nsecond note\nstill the second\n")
+
+    assert list(read_records(path)) == [
+        {"line_number": 1, "text": "first note"},
+        {"line_number": 4, "text": "second note\nstill the second"},
+    ]
+
+
+def test_a_block_reader_keeps_the_blank_lines_inside_an_entry(tmp_path: Path) -> None:
+    path = tmp_path / "journal.txt"
+    path.write_text("a title\n\n01/01 - one\n\n  continued\n\n01/02 - two\n")
+
+    records = list(blocks_starting_with(r"\d{1,2}/\d{1,2}")(path))
+
+    assert records == [
+        {"line_number": 1, "text": "a title"},
+        {"line_number": 3, "text": "01/01 - one\n\n  continued"},
+        {"line_number": 7, "text": "01/02 - two"},
+    ]
+
+
+def test_a_registered_reader_wins_until_the_readers_are_cleared(tmp_path: Path) -> None:
+    path = tmp_path / "journal.txt"
+    path.write_text("01/01 - one\n\ncontinued\n")
+    register_reader(".TXT", blocks_starting_with(r"\d{1,2}/\d{1,2}"))
+
+    assert len(list(read_records(path))) == 1
+
+    clear_readers()
+
+    assert len(list(read_records(path))) == 2

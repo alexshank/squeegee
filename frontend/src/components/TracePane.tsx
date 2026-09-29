@@ -6,6 +6,7 @@ import { StatusPill } from "./StatusPill";
 
 interface Props {
   trace: Trace | null;
+  loading: boolean;
   error: string | null;
   step: Status | null;
   onStep: (status: Status | null) => void;
@@ -13,7 +14,7 @@ interface Props {
 }
 
 /** One record's whole journey, stage by stage, with changed fields marked. */
-export function TracePane({ trace, error, step, onStep, onRecord }: Props) {
+export function TracePane({ trace, loading, error, step, onStep, onRecord }: Props) {
   if (!trace) {
     return (
       <aside style={{ borderLeft: "1px solid var(--border)" }}>
@@ -22,6 +23,8 @@ export function TracePane({ trace, error, step, onStep, onRecord }: Props) {
           <p className="status-error" style={{ padding: "0 0.6rem" }}>
             {error}
           </p>
+        ) : loading ? (
+          <Empty>loading…</Empty>
         ) : (
           <Empty>pick a record to trace it through the pipeline</Empty>
         )}
