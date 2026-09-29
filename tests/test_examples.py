@@ -5,7 +5,9 @@ changes here, that document is wrong and needs the same edit.
 """
 
 import csv
+import io
 import json
+import urllib.request
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -116,7 +118,19 @@ def test_continuing_past_the_bad_row_finishes(tmp_path: Path) -> None:
     ]
 
 
-def test_the_example_cleans_the_2022_words_journal(tmp_path: Path) -> None:
+def test_the_example_cleans_the_2022_words_journal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    asked: list[dict[str, Any]] = []
+
+    # the classifier is a paid network call, so the test answers in its place
+    def fake_jev(request: urllib.request.Request, timeout: float) -> io.BytesIO:
+        asked.append(json.loads(request.data))  # type: ignore[arg-type]
+        answer = {"type": "choice", "choice": "tv", "confidence": 0.9}
+        return io.BytesIO(json.dumps({"answers": {"medium": answer}}).encode())
+
+    monkeypatch.setenv("TYPESAFE_API_KEY", "test-key")
+    monkeypatch.setattr(urllib.request, "urlopen", fake_jev)
     output = tmp_path / "words.json"
 
     exit_code = main(
@@ -143,14 +157,24 @@ def test_the_example_cleans_the_2022_words_journal(tmp_path: Path) -> None:
         {
             "text": "As you are, so I once was As I am, so you will be",
             "source": "St. Catherine\u2019s crypt. Memento mori",
+            "medium": "tv",
+            "medium_confidence": 0.9,
         }
     ]
     # the one day two quotes were written down
     assert _entry_for("2022-11-21", entries)["quote_count"] == 2
     # the days written down without quote marks are kept, not dropped
     assert _entry_for("2022-01-10", entries)["quotes"] == [
-        {"text": "THE DAWGS", "source": "crazy Georgia fan"}
+        {
+            "text": "THE DAWGS",
+            "source": "crazy Georgia fan",
+            "medium": "tv",
+            "medium_confidence": 0.9,
+        }
     ]
+    # one question per quote, and the two-quote day asks twice
+    assert len(asked) == 38
+    assert asked[0]["state"].endswith("- big lewbowski")
 
 
 def _entry_for(date: str, entries: list[dict[str, Any]]) -> dict[str, Any]:

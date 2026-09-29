@@ -147,14 +147,19 @@ Everything else is an ordinary stage:
 | 2 | `parse_the_date` | `01/01`, `11/17/22` and `11/21/2022` all become an ISO date |
 | 3 | `collect_the_quotes` | Pulls out each quoted passage; an entry written without quote marks keeps its whole body as one passage |
 | 4 | `attribute_each_quote` | Tidies the attribution that follows each closing quote |
+| 5 | `classify_each_quote` | Asks [Jev](https://docs.typesafe.ai) which kind of work each quote came from: film, TV, music, book, anime, a real person, or other |
+
+The last stage calls TypeSafe's hosted classifier once per quote, so the run needs `TYPESAFE_API_KEY` in the environment. Every entry in the file is a quote, so classifying "quote or word" would say nothing; the medium is the split worth having. The answer's `confidence` is kept next to the choice, so a low-confidence call is visible in the run rather than hidden in the output. The test replaces the network call with a fixed answer.
 
 ```
-squeegee run examples/words_2022.py --input examples/words-2022.txt --output /tmp/words-2022.json --db /tmp/squeegee-words.db
+TYPESAFE_API_KEY=... squeegee run examples/words_2022.py --input examples/words-2022.txt --output /tmp/words-2022.json --db /tmp/squeegee-words.db
 ```
 
 ```
 run 1 finished: 38 in, 37 out, 1 dropped, 0 errored, 0.03s
 recorded in /tmp/squeegee-words.db
 ```
+
+The timing above predates the classifier; expect a few seconds more for thirty-eight calls.
 
 Thirty-eight blocks in, because the title is a record of its own, and thirty-seven dated entries out. The output is JSON rather than CSV: a record holds a list of quotes, and the CSV writer would flatten it into a string.
