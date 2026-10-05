@@ -12,16 +12,16 @@ by calling ``register_reader``.
 """
 
 import csv
+import json
 from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import Any
 
 from squeegee.errors import FormatError
 from squeegee.io import csv_io, json_io, text_io
 
 Record = dict[str, Any]
 Reader = Callable[[Path], Iterator[tuple[str, Record]]]
-Resolved = TypeVar("Resolved")
 
 _READERS: dict[str, Reader] = {
     ".csv": csv_io.read_csv,
@@ -62,8 +62,8 @@ def write_records(path: Path, records: Iterable[Record]) -> int:
 
 def reader_for(path: Path) -> Reader:
     """Return the reader for ``path``: by extension, then by content, then plain text."""
-    readers = {**_READERS, **_CUSTOM_READERS}
-    return readers.get(path.suffix.lower()) or _sniff(path)
+    suffix = path.suffix.lower()
+    return _CUSTOM_READERS.get(suffix) or _READERS.get(suffix) or _sniff(path)
 
 
 def register_reader(suffix: str, reader: Reader) -> None:
@@ -87,25 +87,23 @@ def clear_readers() -> None:
 
 def writer_for(path: Path) -> Callable[[Path, Iterable[Record]], int]:
     """Return the writer for ``path``, so a run can fail before it starts."""
-    return _resolve(_WRITERS, path)
-
-
-def _resolve(table: dict[str, Resolved], path: Path) -> Resolved:
     try:
-        return table[path.suffix.lower()]
+        return _WRITERS[path.suffix.lower()]
     except KeyError:
-        supported = ", ".join(sorted(table))
         raise FormatError(
             f"cannot handle {path.name!r}: {path.suffix or 'no extension'} is not supported. "
-            f"Supported extensions: {supported}"
+            f"Supported extensions: {', '.join(sorted(_WRITERS))}"
         ) from None
 
 
 def _sniff(path: Path) -> Reader:
-    with path.open(encoding="utf-8", errors="replace") as handle:
-        sample = handle.read(64 * 1024)
-    if sample.lstrip()[:1] in ("[", "{"):
+    # squeegee is for small data, so reading the whole file to decide is affordable
+    text = path.read_text(encoding="utf-8", errors="replace")
+    first_line = next((line for line in text.splitlines() if line.strip()), "")
+    # a leading bracket is not enough: a log of "[INFO] ..." lines is not JSON
+    if _holds_json(first_line) or _holds_json(text):
         return json_io.read_json
+    sample = text[: 64 * 1024]
     try:
         # the CSV reader is comma only, so sniffing for any other delimiter would lie
         csv.Sniffer().sniff(sample, delimiters=",")
@@ -114,3 +112,10 @@ def _sniff(path: Path) -> Reader:
     except csv.Error:
         pass
     return text_io.read_text
+
+
+def _holds_json(text: str) -> bool:
+    try:
+        return isinstance(json.loads(text), dict | list)
+    except json.JSONDecodeError:
+        return False

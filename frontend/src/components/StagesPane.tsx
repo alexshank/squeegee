@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { FieldStats, StageSummary } from "../api";
 import { Counts } from "./Counts";
 import { Splitter } from "./Splitter";
+import { Empty, PaneHeading } from "./shared";
 
 interface Props {
   stages: StageSummary[];
@@ -94,27 +95,6 @@ export function StagesPane({ stages, position, fields, field, onStage, onField, 
       </div>
     </aside>
   );
-}
-
-export function PaneHeading({ children }: { children: string }) {
-  return (
-    <h2
-      style={{
-        margin: 0,
-        padding: "0.5rem 0.6rem 0.25rem",
-        fontSize: "0.75rem",
-        textTransform: "uppercase",
-        letterSpacing: "0.06em",
-        color: "var(--muted)",
-      }}
-    >
-      {children}
-    </h2>
-  );
-}
-
-export function Empty({ children }: { children: string }) {
-  return <p style={{ padding: "0.5rem 0.6rem", color: "var(--muted)" }}>{children}</p>;
 }
 
 function rowStyle(selected: boolean) {

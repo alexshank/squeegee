@@ -53,7 +53,7 @@ Server and database identity, for the UI header.
 ```json
 {
   "squeegee_version": "0.1.0",
-  "database_path": "/home/dev/work/.squeegee/squeegee.db",
+  "database_path": "/tmp/squeegee.db",
   "run_count": 42
 }
 ```
@@ -204,21 +204,36 @@ The full trace of one record through the pipeline. This is the debugging screen'
 ```json
 {
   "record_index": 4471,
-  "source": { "id": "4471", "amount": "n/a" },
+  "source": { "ID": "4471", "Amount": "n/a" },
   "final_status": "error",
+  "previous_record_index": 4470,
+  "next_record_index": 4472,
+  "listed": true,
   "events": [
     {
       "position": 0,
-      "stage_name": "normalize_headers",
+      "stage_name": "read_csv",
+      "input_format": "csv",
       "status": "ok",
-      "input": { "ID": "4471", "Amount": "n/a" },
-      "output": { "id": "4471", "amount": "n/a" },
-      "changed_fields": ["id", "amount"],
-      "duration_us": 22
+      "input": "ID,Amount\n4471,n/a",
+      "output": { "ID": "4471", "Amount": "n/a" },
+      "changed_fields": [],
+      "duration_us": 3
     },
     {
       "position": 1,
+      "stage_name": "normalize_headers",
+      "input_format": null,
+      "status": "ok",
+      "input": { "ID": "4471", "Amount": "n/a" },
+      "output": { "id": "4471", "amount": "n/a" },
+      "changed_fields": ["Amount", "ID", "amount", "id"],
+      "duration_us": 22
+    },
+    {
+      "position": 2,
       "stage_name": "parse_amount",
+      "input_format": null,
       "status": "error",
       "input": { "id": "4471", "amount": "n/a" },
       "output": null,

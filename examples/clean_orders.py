@@ -86,7 +86,7 @@ def to_csv_text(record):
     """Render the record as CSV text, a header and one row, nested fields as JSON.
 
     A stage may return text rather than a dictionary. The CSV writer reads this
-    text back into rows, so the output file is the same either way.
+    text back into rows.
     """
     flat = {
         key: json.dumps(value) if isinstance(value, dict | list) else value

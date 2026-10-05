@@ -47,6 +47,12 @@ class Store:
         path.parent.mkdir(parents=True, exist_ok=True)
         self.path = path
         self._connection = sqlite3.connect(path)
+        # checked before anything writes, so a refused database is left as it was
+        try:
+            check_schema_version(self._connection, path)
+        except SqueegeeError:
+            self._connection.close()
+            raise
         self._connection.execute("PRAGMA journal_mode=WAL")
         self._connection.execute("PRAGMA foreign_keys=ON")
         # NORMAL is the usual companion to WAL: a commit no longer waits on fsync,
@@ -54,7 +60,6 @@ class Store:
         # The exposure is losing the most recent commits to a power cut, never to a
         # crash of squeegee itself, and this is a debugging record, not a ledger.
         self._connection.execute("PRAGMA synchronous=NORMAL")
-        check_schema_version(self._connection, path)
         self._connection.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
         self._connection.executescript(_SCHEMA.read_text(encoding="utf-8"))
         self._connection.executescript(_append_only_triggers())

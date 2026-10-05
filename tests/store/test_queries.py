@@ -82,10 +82,10 @@ def test_a_failed_run_reports_the_stage_and_record_that_stopped_it(database: Pat
         "error_message": "could not convert string to float: 'n/a'",
     }
     assert summary["options"]["continue_on_error"] is False
-    assert [(stage["name"], stage["kind"]) for stage in summary["stages"]][:3] == [
-        ("read_csv", "source"),
-        ("normalize_headers", "map"),
-        ("drop_internal_test_orders", "map"),
+    assert [stage["name"] for stage in summary["stages"]][:3] == [
+        "read_csv",
+        "normalize_headers",
+        "drop_internal_test_orders",
     ]
     assert summary["stages"][2]["records_dropped"] == 2
 
@@ -187,17 +187,18 @@ def test_a_trace_steps_to_the_neighbouring_record(database: Path) -> None:
 
 def test_stepping_walks_the_records_table_of_one_stage(database: Path) -> None:
     # records 1 and 7 are the internal test accounts, dropped at stage 2
-    trace = queries.record_trace(database, 1, 3, stage=2, status="dropped")
+    trace = queries.record_trace(database, 1, 3, position=2, status="dropped")
 
     assert (trace["previous_record_index"], trace["next_record_index"]) == (1, 7)
 
 
 def test_stepping_honours_the_records_table_search(database: Path) -> None:
-    trace = queries.record_trace(database, 1, 0, stage=2, search="internal.test")
+    trace = queries.record_trace(database, 1, 0, position=2, search="internal.test")
 
     assert (trace["previous_record_index"], trace["next_record_index"]) == (None, 1)
     assert trace["listed"] is False
-    assert queries.record_trace(database, 1, 1, stage=2, search="internal.test")["listed"] is True
+    listed = queries.record_trace(database, 1, 1, position=2, search="internal.test")["listed"]
+    assert listed is True
 
 
 def test_an_unknown_record_is_an_error(database: Path) -> None:

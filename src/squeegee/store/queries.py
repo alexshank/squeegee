@@ -96,7 +96,7 @@ def stage_detail(database_path: Path, run_id: int, position: int) -> Row:
     with _read_only(database_path) as connection:
         stage = connection.execute(
             "SELECT rs.id AS run_stage_id, rs.position, sv.id AS stage_version_id, sv.name, "
-            "sv.description, sv.input_type, sv.output_type, sv.kind, sv.input_format, "
+            "sv.description, sv.input_type, sv.output_type, "
             "sv.source_text, sv.source_sha256, sv.first_seen_at "
             "FROM run_stages rs JOIN stage_versions sv ON sv.id = rs.stage_version_id "
             "WHERE rs.run_id = ? AND rs.position = ?",
@@ -156,7 +156,7 @@ def record_trace(
     database_path: Path,
     run_id: int,
     record_index: int,
-    stage: int = 0,
+    position: int = 0,
     status: str | None = None,
     search: str | None = None,
 ) -> Row:
@@ -176,7 +176,7 @@ def record_trace(
         events = [
             _trace_event(event)
             for event in connection.execute(
-                "SELECT rs.position, sv.name AS stage_name, sv.kind, sv.input_format, e.status, "
+                "SELECT rs.position, sv.name AS stage_name, sv.input_format, e.status, "
                 "e.input_json, "
                 "e.output_json, e.error_type, e.error_message, e.duration_us "
                 "FROM record_events e "
@@ -187,7 +187,7 @@ def record_trace(
             )
         ]
         neighbours = _neighbours(
-            connection, _run_stage_id(connection, run_id, stage), record_index, status, search
+            connection, _run_stage_id(connection, run_id, position), record_index, status, search
         )
         return {
             "record_index": record_index,
@@ -430,7 +430,7 @@ def _inferred_type(type_count: int, a_type: str | None) -> str:
 def _stage_rows(connection: sqlite3.Connection, run_id: int) -> list[Row]:
     stages = connection.execute(
         "SELECT rs.id AS run_stage_id, rs.position, sv.id AS stage_version_id, sv.name, "
-        "sv.description, sv.kind "
+        "sv.description "
         "FROM run_stages rs JOIN stage_versions sv ON sv.id = rs.stage_version_id "
         "WHERE rs.run_id = ? ORDER BY rs.position",
         (run_id,),
@@ -497,7 +497,7 @@ def _neighbours(
     status: str | None,
     search: str | None,
 ) -> Row:
-    listed = (
+    matching = (
         "FROM record_events e JOIN records r ON r.id = e.record_id "
         "WHERE e.run_stage_id = :run_stage_id "
         "AND (:status IS NULL OR e.status = :status) "
@@ -511,14 +511,14 @@ def _neighbours(
         "search": search,
     }
     previous = connection.execute(
-        f"SELECT MAX(r.record_index) {listed} AND r.record_index < :record_index", parameters
+        f"SELECT MAX(r.record_index) {matching} AND r.record_index < :record_index", parameters
     ).fetchone()[0]
     following = connection.execute(
-        f"SELECT MIN(r.record_index) {listed} AND r.record_index > :record_index", parameters
+        f"SELECT MIN(r.record_index) {matching} AND r.record_index > :record_index", parameters
     ).fetchone()[0]
     # whether the table lists this record at all, so a filter change can move off it
     present = connection.execute(
-        f"SELECT COUNT(*) {listed} AND r.record_index = :record_index", parameters
+        f"SELECT COUNT(*) {matching} AND r.record_index = :record_index", parameters
     ).fetchone()[0]
     return {
         "previous_record_index": previous,
@@ -545,7 +545,6 @@ def _trace_event(event: sqlite3.Row) -> Row:
     return {
         "position": event["position"],
         "stage_name": event["stage_name"],
-        "kind": event["kind"],
         "input_format": event["input_format"],
         "status": event["status"],
         "input": stage_input,
@@ -648,5 +647,9 @@ def _read_only(database_path: Path) -> sqlite3.Connection:
         raise SqueegeeError(f"no squeegee database at {database_path}")
     connection = sqlite3.connect(f"file:{database_path}?mode=ro", uri=True)
     connection.row_factory = sqlite3.Row
-    check_schema_version(connection, database_path)
+    try:
+        check_schema_version(connection, database_path)
+    except SqueegeeError:
+        connection.close()
+        raise
     return connection

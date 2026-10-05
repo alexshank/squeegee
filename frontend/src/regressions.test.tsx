@@ -308,8 +308,8 @@ function rowsFor(url: string) {
   );
 }
 
-function stubTable() {
-  stubApi({
+function stubTable(slowTrace: (url: string) => Promise<Response> | null = () => null) {
+  const requested = stubApi({
     records: (url) =>
       ok({
         items: rowsFor(url).map((row) => event(row.index, row.status)),
@@ -318,21 +318,50 @@ function stubTable() {
       }),
     trace: (url) => {
       const index = Number(/records\/(\d+)/.exec(url)?.[1]);
-      return ok({ ...trace(index), listed: rowsFor(url).some((row) => row.index === index) });
+      return (
+        slowTrace(url) ??
+        ok({ ...trace(index), listed: rowsFor(url).some((row) => row.index === index) })
+      );
     },
   });
   window.history.pushState({}, "", "/runs/1?stage=0&record=1");
   render(<App />);
+  return requested;
 }
 
+// let every settled request's then() run, so the assertion follows the answer
+const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
+
 test("a filter that still lists the chosen record keeps it", async () => {
-  stubTable();
+  const requested = stubTable();
   await waitFor(() => expect(screen.getByText("record 1")).toBeDefined());
 
   fireEvent.click(screen.getByRole("button", { name: "ok" }));
 
-  await waitFor(() => expect(window.location.search).toContain("status=ok"));
+  // refilter asks for one row of the filtered table once it has the answer in hand
+  await waitFor(() => expect(requested.some((url) => url.includes("limit=1"))).toBe(true));
+  await settle();
+  expect(window.location.search).toContain("status=ok");
   expect(window.location.search).toContain("record=1");
+});
+
+test("an answer for a filter already replaced is ignored", async () => {
+  const slow = deferred<Response>();
+  stubTable((url) => (url.includes("status=dropped") ? slow.promise : null));
+  await waitFor(() => expect(screen.getByText("record 1")).toBeDefined());
+
+  fireEvent.click(screen.getByRole("button", { name: "dropped" }));
+  fireEvent.click(screen.getByRole("button", { name: "all" }));
+  await settle();
+  // had it been heeded, this answer would move the selection to record 2
+  slow.resolve({
+    ok: true,
+    json: () => Promise.resolve({ ...trace(1), listed: false }),
+  } as Response);
+  await settle();
+
+  expect(window.location.search).toContain("record=1");
+  expect(window.location.search).not.toContain("status=");
 });
 
 test("a filter that hides the chosen record moves to its first record", async () => {

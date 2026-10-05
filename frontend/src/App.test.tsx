@@ -235,7 +235,7 @@ test("the three panes are on screen at once", async () => {
   expect(await screen.findByText("record 8 at stage 1")).toBeDefined();
   expect(await screen.findByText("record 8")).toBeDefined();
   // the source is behind the stage's code icon now, not on the page
-  expect(screen.queryByText("copy")).toBeNull();
+  expect(screen.queryByRole("button", { name: "copy" })).toBeNull();
 });
 
 test("the centre panel shows the chosen record at the chosen stage", async () => {
@@ -249,7 +249,7 @@ test("the centre panel shows the chosen record at the chosen stage", async () =>
   expect(within(panel).getByText("input · json")).toBeDefined();
   expect(within(panel).getByText("output · json")).toBeDefined();
   // stage 0's own input and output as raw JSON, not the whole trace
-  expect(panel.textContent?.split('"Order ID"').length).toBe(2);
+  expect(within(panel).getAllByText(/"Order ID"/)).toHaveLength(1);
   expect(panel.textContent).toContain('"order_id"');
 });
 

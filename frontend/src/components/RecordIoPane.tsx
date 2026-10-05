@@ -1,6 +1,6 @@
 import type { Trace } from "../api";
-import { Label, RawValue } from "./RawValue";
-import { Empty, PaneHeading } from "./StagesPane";
+import { RawValue } from "./RawValue";
+import { Empty, Label, PaneHeading } from "./shared";
 
 interface Props {
   trace: Trace | null;

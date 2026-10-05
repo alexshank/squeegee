@@ -69,7 +69,6 @@ export function RunView({ runId, params }: Props) {
   // closing walks the history back when opening pushed onto it, so a shared
   // link that arrives with the modal open does not gain an entry to walk
   const pushedSource = useRef(false);
-  const latestFilter = useRef(0);
   const [left, setLeft] = useState(300);
   const [right, setRight] = useState(420);
   const [bottom, setBottom] = useState(320);
@@ -82,20 +81,22 @@ export function RunView({ runId, params }: Props) {
   }
 
   // the filter applies at once; the record follows once the server says whether
-  // the filtered table still lists it, so typing is never held up by a request
+  // the filtered table still lists it, so typing is never held up by a request.
+  // the trace asked for here is the one useApi is also loading; sharing it would
+  // mean an effect that also fires on deep links and stage changes, where
+  // "never reached this stage" is the right answer rather than a jump
   async function refilter(nextStatus: Status | null, nextSearch: string, replace: boolean) {
     setParams({ status: nextStatus, q: nextSearch || null }, replace);
-    const request = ++latestFilter.current;
     if (recordIndex === null) return;
+    const asked = window.location.search;
     const filters = { status: nextStatus ?? undefined, q: nextSearch || undefined };
     try {
       const [mine, first] = await Promise.all([
         api.trace(runId, recordIndex, { stage: position, ...filters }),
         api.stageRecords(runId, position, { ...filters, limit: 1 }),
       ]);
-      // a newer filter, or a record picked meanwhile, makes this answer stale
-      const picked = integerParam(new URLSearchParams(window.location.search), "record");
-      if (request !== latestFilter.current || picked !== recordIndex || mine.listed) return;
+      // any newer filter, record or stage changes the URL and makes this answer stale
+      if (window.location.search !== asked || mine.listed) return;
       const index = first.items[0]?.record_index;
       setParams({ record: index === undefined ? null : String(index) }, true);
     } catch {

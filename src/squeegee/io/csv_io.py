@@ -23,18 +23,20 @@ def read_csv(path: Path) -> Iterator[tuple[str, Record]]:
 
         reader = csv.DictReader(lines())
         # the header is read first, so it is never mistaken for part of a row
-        reader.fieldnames  # noqa: B018
+        if reader.fieldnames is None:
+            return
         header = "".join(consumed).rstrip("\r\n")
         consumed.clear()
         for row in reader:
             # a row alone is a list of values with no names, so its raw text carries the
             # header too; a quoted field may span lines, so the row is every line consumed
-            yield f"{header}\n" + "".join(consumed).rstrip("\r\n"), row
+            # blank lines before a row are skipped by the reader, so they are trimmed here too
+            yield f"{header}\n" + "".join(consumed).strip("\r\n"), row
             consumed.clear()
 
 
 def write(path: Path, records: Iterable[Record | str]) -> int:
-    """Write records as CSV, taking the column set from the first record.
+    """Write records as CSV, taking the column set from the first, and count the rows.
 
     A record may also be CSV text with its own header, as a stage that renders
     CSV returns, which is read back into rows rather than written verbatim.
@@ -49,7 +51,7 @@ def write(path: Path, records: Iterable[Record | str]) -> int:
             elif set(record) != set(writer.fieldnames):
                 # writing anyway would silently drop the columns the header lacks
                 raise FormatError(
-                    f"record {written} has fields {sorted(record)}, but the CSV header is "
+                    f"row {written} has fields {sorted(record)}, but the CSV header is "
                     f"{sorted(writer.fieldnames)}; every record must have the same fields"
                 )
             writer.writerow(record)
@@ -57,5 +59,11 @@ def write(path: Path, records: Iterable[Record | str]) -> int:
     return written
 
 
-def _rows(record: Record | str) -> Iterable[Record]:
-    return csv.DictReader(io.StringIO(record)) if isinstance(record, str) else [record]
+def _rows(record: Record | str) -> list[Record]:
+    if not isinstance(record, str):
+        return [record]
+    rows = list(csv.DictReader(io.StringIO(record)))
+    if not rows:
+        # a lone line reads as a header with no rows, and the record would vanish
+        raise FormatError(f"CSV text {record[:40]!r} has a header but no rows")
+    return rows

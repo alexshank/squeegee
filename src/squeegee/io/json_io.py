@@ -14,14 +14,17 @@ def read_json(path: Path) -> Iterator[tuple[str, Record]]:
     """One record per element of a top-level array, or per line of JSON Lines."""
     if _starts_an_array(path):
         with path.open(encoding="utf-8") as handle:
-            loaded = json.load(handle)
+            try:
+                loaded = json.load(handle)
+            except json.JSONDecodeError as error:
+                raise FormatError(f"{path.name} is not valid JSON: {error}") from error
         for position, element in enumerate(loaded):
             if not isinstance(element, dict):
                 raise FormatError(
                     f"{path.name} element {position} holds {type(element).__name__}, not an object"
                 )
             # the parser keeps no offsets, so an element's raw text is re-serialized
-            yield json.dumps(element), element
+            yield json.dumps(element, ensure_ascii=False), element
         return
     with path.open(encoding="utf-8") as handle:
         for number, line in enumerate(handle, start=1):

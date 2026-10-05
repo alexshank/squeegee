@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { activate } from "../RunsList";
 import type { RecordEvent, Status } from "../api";
-import { Empty } from "./StagesPane";
 import { StatusPill } from "./StatusPill";
+import { Empty, outlineButton } from "./shared";
 
 const STATUSES: (Status | null)[] = [null, "ok", "dropped", "error"];
 const COLOURS = {
@@ -47,13 +47,10 @@ export function RecordsPane(props: Props) {
             type="button"
             onClick={() => props.onStatus(option)}
             style={{
+              ...outlineButton,
               border: `1px solid ${option === status ? COLOURS[option ?? "all"] : "var(--border)"}`,
               background: option === status ? "var(--surface)" : "none",
               color: COLOURS[option ?? "all"],
-              cursor: "pointer",
-              font: "inherit",
-              fontSize: "0.75rem",
-              padding: "0.1rem 0.5rem",
             }}
           >
             {option ?? "all"}
@@ -133,15 +130,7 @@ export function RecordsPane(props: Props) {
             type="button"
             onClick={props.onLoadMore}
             disabled={loading}
-            style={{
-              border: "1px solid var(--border)",
-              background: "none",
-              color: "var(--text)",
-              cursor: loading ? "default" : "pointer",
-              font: "inherit",
-              fontSize: "0.75rem",
-              padding: "0.1rem 0.5rem",
-            }}
+            style={{ ...outlineButton, cursor: loading ? "default" : "pointer" }}
           >
             {loading ? "loading…" : "load more"}
           </button>

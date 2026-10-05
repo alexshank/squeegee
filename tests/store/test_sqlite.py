@@ -10,7 +10,7 @@ import pytest
 
 from squeegee.errors import SqueegeeError
 from squeegee.stages import Stage, clear_registry, registered_stages, stage
-from squeegee.store import Store, to_json
+from squeegee.store import Store, queries, to_json
 from squeegee.store.sqlite import BATCH_SIZE, TABLES
 
 
@@ -237,6 +237,11 @@ def test_a_database_from_another_schema_is_refused(tmp_path: Path) -> None:
 
     with pytest.raises(SqueegeeError, match="another version of squeegee"):
         Store(path)
+    with pytest.raises(SqueegeeError, match="another version of squeegee"):
+        queries.run_summary(path, 1)
+    # refusing it must not have switched the old database to WAL on the way
+    with sqlite3.connect(path) as connection:
+        assert connection.execute("PRAGMA journal_mode").fetchone()[0] == "delete"
 
 
 def test_non_ascii_text_is_stored_as_written_so_search_can_find_it() -> None:

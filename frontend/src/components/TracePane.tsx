@@ -1,9 +1,8 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Trace } from "../api";
 import { JsonValue } from "./JsonValue";
-import { Label } from "./RawValue";
-import { Empty, PaneHeading } from "./StagesPane";
 import { StatusPill } from "./StatusPill";
+import { Empty, Label, PaneHeading, outlineButton } from "./shared";
 
 interface Props {
   trace: Trace | null;
@@ -42,11 +41,11 @@ export function TracePane({ trace, loading, error, onRecord }: Props) {
           alignItems: "center",
         }}
       >
-        <StepButton to={trace.previous_record_index} onRecord={onRecord} label="previous record">
+        <StepButton to={trace.previous_record_index} onRecord={onRecord}>
           <ChevronLeft size={14} aria-hidden />
           previous record
         </StepButton>
-        <StepButton to={trace.next_record_index} onRecord={onRecord} label="next record">
+        <StepButton to={trace.next_record_index} onRecord={onRecord}>
           next record
           <ChevronRight size={14} aria-hidden />
         </StepButton>
@@ -105,32 +104,26 @@ export function TracePane({ trace, loading, error, onRecord }: Props) {
 function StepButton({
   to,
   onRecord,
-  label,
   children,
 }: {
   to: number | null;
   onRecord: (index: number) => void;
-  label: string;
   children: React.ReactNode;
 }) {
   return (
     <button
       type="button"
       disabled={to === null}
-      aria-label={label}
       onClick={() => to !== null && onRecord(to)}
       style={{
+        ...outlineButton,
         flex: 1,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         gap: "0.2rem",
-        border: "1px solid var(--border)",
-        background: "none",
         color: to === null ? "var(--muted)" : "var(--text)",
         cursor: to === null ? "default" : "pointer",
-        font: "inherit",
-        fontSize: "0.75rem",
         padding: "0.2rem 0.4rem",
       }}
     >

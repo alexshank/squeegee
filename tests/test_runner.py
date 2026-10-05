@@ -218,6 +218,17 @@ def test_limit_processes_only_the_first_records(workspace: Path) -> None:
     assert execute(workspace, limit=2).records_in == 2
 
 
+@pytest.mark.parametrize("option", ["limit", "sample"])
+def test_a_negative_count_is_refused_before_the_run_starts(workspace: Path, option: str) -> None:
+    @stage
+    def identity(record: Record) -> Record:
+        return record
+
+    with pytest.raises(SqueegeeError, match="must be 0 or more"):
+        execute(workspace, **{option: -1})  # type: ignore[arg-type]
+    assert not (workspace / ".squeegee" / "squeegee.db").exists()
+
+
 def test_sampling_is_reproducible_with_a_seed(workspace: Path) -> None:
     @stage
     def identity(record: Record) -> Record:

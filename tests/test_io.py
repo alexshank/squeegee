@@ -75,8 +75,9 @@ def test_reading_is_lazy(tmp_path: Path) -> None:
         ('{"id": "1"}\n{"id": "2"}\n', [{"id": "1"}, {"id": "2"}]),
         ("id,amount\n1,$29.99\n2,$4.00\n", RECORDS),
         ("just some notes", [{"line_number": 1, "text": "just some notes"}]),
+        ("[INFO] started", [{"line_number": 1, "text": "[INFO] started"}]),
     ],
-    ids=["json", "csv", "plain text"],
+    ids=["json", "csv", "plain text", "a log that only starts like JSON"],
 )
 def test_an_unknown_extension_is_read_by_its_content(
     tmp_path: Path, content: str, expected: list[Record]
@@ -186,3 +187,23 @@ def test_csv_text_records_are_written_as_their_rows(tmp_path: Path) -> None:
 
     assert write_records(path, ["id,amount\n1,$29.99", "id,amount\n2,$4.00"]) == 2  # type: ignore[list-item]
     assert list(read_records(path)) == RECORDS
+
+
+def test_a_blank_line_is_not_part_of_the_next_rows_raw_slice(tmp_path: Path) -> None:
+    path = tmp_path / "gappy.csv"
+    path.write_text("a,b\n1,2\n\n3,4\n")
+
+    assert [raw for raw, _ in reader_for(path)(path)] == ["a,b\n1,2", "a,b\n3,4"]
+
+
+def test_a_broken_json_array_is_a_format_error(tmp_path: Path) -> None:
+    path = tmp_path / "broken.json"
+    path.write_text('[{"id": 1},')
+
+    with pytest.raises(FormatError, match=r"broken\.json is not valid JSON"):
+        list(read_records(path))
+
+
+def test_csv_text_with_no_rows_is_refused_rather_than_lost(tmp_path: Path) -> None:
+    with pytest.raises(FormatError, match="has a header but no rows"):
+        write_records(tmp_path / "out.csv", ["hello"])  # type: ignore[list-item]

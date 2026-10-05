@@ -1,6 +1,7 @@
 import { Highlight } from "prism-react-renderer";
 import { useState } from "react";
 import { THEME } from "./StageSource";
+import { Label, outlineButton } from "./shared";
 
 // one colour per column, cycling, from the code palette the theme already defines
 const RAINBOW = [
@@ -43,15 +44,7 @@ export function RawValue({ label, value, format = null }: Props) {
           <button
             type="button"
             onClick={() => setAsTable(!asTable)}
-            style={{
-              background: "none",
-              border: "1px solid var(--border)",
-              color: "var(--text)",
-              cursor: "pointer",
-              font: "inherit",
-              fontSize: "0.7rem",
-              padding: "0 0.4rem",
-            }}
+            style={{ ...outlineButton, fontSize: "0.7rem", padding: "0 0.4rem" }}
           >
             {asTable ? "view as text" : "view as table"}
           </button>
@@ -144,21 +137,6 @@ export function unquote(field: string): string {
     : field;
 }
 
-export function Label({ children }: { children: string }) {
-  return (
-    <div
-      style={{
-        fontSize: "0.7rem",
-        textTransform: "uppercase",
-        letterSpacing: "0.06em",
-        color: "var(--muted)",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
 export function infer(
   value: unknown,
   format: string | null,
@@ -197,7 +175,9 @@ export function csvRows(text: string): string[][] {
   // an escaped "" flips twice, so it leaves the quoting as it was
   let quoted = false;
   for (const character of text) {
-    if (character === '"') quoted = !quoted;
+    // a quote only means quoting in a field that opened with one, so a stray inch
+    // mark in an unquoted field cannot swallow the rest of the text
+    if (character === '"' && (field === "" || field.startsWith('"'))) quoted = !quoted;
     if (!quoted && character === ",") {
       row.push(field);
       field = "";

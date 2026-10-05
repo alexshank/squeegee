@@ -71,7 +71,7 @@ def run(
             an unsupported extension on either side.
     """
     stages = registered_stages()
-    _check_wiring(stages, input_path, output_path)
+    _check_wiring(stages, input_path, output_path, limit, sample)
     reader = reader_for(input_path)
     started = time.perf_counter_ns()
 
@@ -210,7 +210,15 @@ def _drive(
     return current, None
 
 
-def _check_wiring(stages: list[Stage], input_path: Path, output_path: Path | None) -> None:
+def _check_wiring(
+    stages: list[Stage],
+    input_path: Path,
+    output_path: Path | None,
+    limit: int | None,
+    sample: int | None,
+) -> None:
+    if (limit or 0) < 0 or (sample or 0) < 0:
+        raise SqueegeeError("--limit and --sample must be 0 or more")
     if not stages:
         raise SqueegeeError(
             f"{input_path.name} has nowhere to go: the script registered no stages. "
@@ -235,13 +243,12 @@ def _selected(
 
 
 def _timed(pairs: Iterator[tuple[str, Record]]) -> Iterator[tuple[str, Record, int]]:
-    while True:
-        started = time.perf_counter_ns()
-        try:
-            raw, record = next(pairs)
-        except StopIteration:
-            return
+    # the clock restarts only after the caller is done with a record, so each
+    # duration is the reader's own time to produce the next one
+    started = time.perf_counter_ns()
+    for raw, record in pairs:
         yield raw, record, _elapsed_us(started)
+        started = time.perf_counter_ns()
 
 
 def _elapsed_us(started_ns: int) -> int:

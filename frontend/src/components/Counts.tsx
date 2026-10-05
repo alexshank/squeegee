@@ -13,19 +13,17 @@ export function Counts({ ok, dropped, errored, okLabel = "ok" }: Props) {
     [dropped, "dropped", "status-dropped"],
     [errored, "errored", "status-error"],
   ] as const;
+  // callers render this inside muted text, so zeros and separators stay muted
   return (
-    <span>
+    <>
       {parts.map(([count, word, className], index) => (
         <span key={word}>
-          {index > 0 && <span style={{ color: "var(--muted)" }}> · </span>}
-          <span
-            className={count > 0 ? className : undefined}
-            style={count > 0 ? {} : { color: "var(--muted)" }}
-          >
+          {index > 0 && " · "}
+          <span className={count > 0 ? className : undefined}>
             {count} {word}
           </span>
         </span>
       ))}
-    </span>
+    </>
   );
 }

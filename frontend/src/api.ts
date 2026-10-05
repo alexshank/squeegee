@@ -42,7 +42,6 @@ export interface Failure {
 export interface StageSummary {
   position: number;
   name: string;
-  kind: "source" | "map";
   description: string | null;
   records_in: number;
   records_ok: number;
@@ -89,14 +88,12 @@ export interface RecordEvent {
 export interface TraceEvent extends Omit<RecordEvent, "record_index"> {
   position: number;
   stage_name: string;
-  kind: "source" | "map";
   input_format: string | null;
   changed_fields: string[];
 }
 
 export interface Trace {
   record_index: number;
-  source: Record_;
   final_status: Status | null;
   events: TraceEvent[];
   previous_record_index: number | null;
