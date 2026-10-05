@@ -1,5 +1,5 @@
 import { AlertTriangle } from "lucide-react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { type FileRole, type Status, api } from "./api";
 import { Counts } from "./components/Counts";
 import { FieldPanel } from "./components/FieldPanel";
@@ -10,6 +10,7 @@ import { SourceModal } from "./components/SourceModal";
 import { Splitter } from "./components/Splitter";
 import { StagesPane } from "./components/StagesPane";
 import { TracePane } from "./components/TracePane";
+import { clamp } from "./components/shared";
 import { fileParam, integerParam, statusParam } from "./params";
 import { back, useParamSetter } from "./router";
 import { useApi } from "./useApi";
@@ -68,19 +69,16 @@ export function RunView({ runId, params }: Props) {
   // useApi keeps the last good value visible while the next one loads, so both
   // panes must ignore a trace that is still the record selected before this one
   const current = trace.data?.record_index === recordIndex ? trace.data : null;
-  // closing walks the history back when opening pushed onto it, so a shared
-  // link that arrives with the modal open does not gain an entry to walk
-  const pushedModal = useRef(false);
   const [left, setLeft] = useState(300);
   const [right, setRight] = useState(420);
   const [bottom, setBottom] = useState(320);
-  // no pane may be dragged shut, or its handle would be lost with it
-  const clamp = (size: number) => Math.max(120, size);
 
-  // a stage's source and a run's files share one modal slot, so opening either closes the other
+  // the entry opening pushes is marked in its history state, so closing walks back
+  // over exactly that entry, even after Back and Forward, while a shared link that
+  // arrives with a modal open has no such entry and is replaced instead
   function openModal(updates: { source: string | null; file: FileRole | null }) {
-    pushedModal.current = true;
     setParams(updates);
+    window.history.replaceState({ modal: true }, "");
   }
 
   // the filter applies at once; the record follows once the server says whether
@@ -110,8 +108,7 @@ export function RunView({ runId, params }: Props) {
   function closeModal() {
     // replacing instead would leave an entry identical to the one before it,
     // and Back would look broken
-    if (pushedModal.current) {
-      pushedModal.current = false;
+    if (window.history.state?.modal) {
       back();
     } else {
       setParams({ source: null, file: null }, true);
@@ -237,7 +234,10 @@ export function RunView({ runId, params }: Props) {
       {sourcePosition !== null && (
         <SourceModal runId={runId} position={sourcePosition} onClose={closeModal} />
       )}
-      {fileRole !== null && <FileModal runId={runId} role={fileRole} onClose={closeModal} />}
+      {/* only a hand-edited link can ask for both, and one modal at a time is all a page shows */}
+      {fileRole !== null && sourcePosition === null && (
+        <FileModal runId={runId} role={fileRole} onClose={closeModal} />
+      )}
     </>
   );
 }

@@ -37,7 +37,7 @@ _SCHEMA = Path(__file__).with_name("schema.sql")
 
 # bumped whenever schema.sql changes shape; history is append-only, so an older
 # database is refused rather than migrated
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 
 class Store:
@@ -150,13 +150,15 @@ class Store:
         self._connection.commit()
         return _row_id(cursor)
 
-    def add_file(
-        self, run_id: int, role: str, path: Path, content: str, file_format: str | None = None
-    ) -> None:
-        """Keep a file the run read or wrote: its script, its input, or its output."""
+    def add_file(self, run_id: int, role: str, path: Path, file_format: str | None = None) -> None:
+        """Keep a file the run read or wrote: its script, its input, or its output.
+
+        The bytes are kept rather than decoded text, so line endings and any bytes
+        that are not UTF-8 survive exactly as they were.
+        """
         self._connection.execute(
             "INSERT INTO run_files (run_id, role, path, format, content) VALUES (?, ?, ?, ?, ?)",
-            (run_id, role, str(path), file_format, content),
+            (run_id, role, str(path), file_format, path.read_bytes()),
         )
         self._connection.commit()
 

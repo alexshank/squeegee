@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS run_files (
     role     TEXT    NOT NULL CHECK (role IN ('script', 'input', 'output')),
     path     TEXT    NOT NULL,
     format   TEXT,
-    content  TEXT    NOT NULL,
+    content  BLOB    NOT NULL,
     UNIQUE (run_id, role)
 );
 

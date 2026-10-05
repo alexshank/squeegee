@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { FieldStats, FileRole, StageSummary } from "../api";
 import { Counts } from "./Counts";
 import { Splitter } from "./Splitter";
-import { Empty, PaneHeading, outlineButton } from "./shared";
+import { Empty, PaneHeading, clamp, outlineButton } from "./shared";
 
 interface Props {
   stages: StageSummary[];
@@ -21,7 +21,7 @@ export function StagesPane(props: Props) {
   const { stages, position, fields, field, onStage, onField, onSource, onFile } = props;
   // the page header takes roughly the first hundred pixels, so this puts the
   // split between stages and fields about halfway down the window
-  const [height, setHeight] = useState(() => Math.max(120, window.innerHeight / 2 - 100));
+  const [height, setHeight] = useState(() => clamp(window.innerHeight / 2 - 100));
   return (
     <aside style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
       <div style={{ height, flexShrink: 0, overflowY: "auto" }}>
@@ -37,6 +37,7 @@ export function StagesPane(props: Props) {
           <button
             type="button"
             onClick={() => onFile("script")}
+            aria-label="script file"
             style={{ ...outlineButton, display: "flex", alignItems: "center", gap: "0.3rem" }}
           >
             <FileCode size={13} aria-hidden />
@@ -89,7 +90,7 @@ export function StagesPane(props: Props) {
           ))}
         </ul>
       </div>
-      <Splitter axis="y" onDrag={(delta) => setHeight((size) => Math.max(120, size + delta))} />
+      <Splitter axis="y" onDrag={(delta) => setHeight((size) => clamp(size + delta))} />
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto", paddingTop: "0.5rem" }}>
         <PaneHeading>fields</PaneHeading>
         {fields.length === 0 && <Empty>no output to measure</Empty>}

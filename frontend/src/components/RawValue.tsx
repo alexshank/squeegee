@@ -153,8 +153,9 @@ export function infer(
   } catch {
     // not JSON, so it is whatever the stage says it is, or plain text
   }
-  // a JSON Lines file parses as no single value, but is still JSON to highlight
-  if (format === "json") return { text: value, language: "json" };
+  // a JSON Lines file parses as no single value, but is still JSON to highlight; a
+  // single line that failed to parse is shown as the text it is
+  if (format === "json" && value.includes("\n")) return { text: value, language: "json" };
   return { text: value, language: format === "csv" || looksLikeCsv(value) ? "csv" : null };
 }
 

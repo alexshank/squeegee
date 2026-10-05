@@ -130,7 +130,8 @@ def run_file(database_path: Path, run_id: int, role: str) -> Row:
             (run_id, role),
         ).fetchone()
         _require(row, f"run {run_id} kept no {role} file")
-        return dict(row)
+        # decoded only for display, where a stray byte is better shown than refused
+        return {**dict(row), "content": row["content"].decode("utf-8", errors="replace")}
 
 
 def stage_records(
@@ -598,7 +599,11 @@ def _counts(connection: sqlite3.Connection, run_id: int) -> Row:
     counts["records_out"] = connection.execute(
         "SELECT COUNT(*) FROM record_events e JOIN run_stages rs ON rs.id = e.run_stage_id "
         "WHERE rs.run_id = ? AND e.status = 'ok' "
-        "AND rs.position = (SELECT MAX(position) FROM run_stages WHERE run_id = ?)",
+        # out means through the script's last stage: the accumulator only runs once a
+        # run has finished, so counting it would show a failed run as zero out
+        "AND rs.position = (SELECT MAX(r.position) FROM run_stages r "
+        "  JOIN stage_versions v ON v.id = r.stage_version_id "
+        "  WHERE r.run_id = ? AND v.kind != 'accumulator')",
         (run_id, run_id),
     ).fetchone()[0]
     return counts

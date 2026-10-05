@@ -213,7 +213,10 @@ def test_csv_text_with_no_rows_is_refused_rather_than_lost(tmp_path: Path) -> No
 def test_a_json_array_is_written_one_element_at_a_time_and_reads_back(tmp_path: Path) -> None:
     path = tmp_path / "out.json"
 
-    assert list(writer_for(path)(path, RECORDS)) == [
-        json.dumps(record, indent=2) for record in RECORDS
+    records = [*RECORDS, {"id": "3", "name": "Zoë"}]
+
+    assert list(writer_for(path)(path, records)) == [
+        json.dumps(record, indent=2, ensure_ascii=False) for record in records
     ]
-    assert json.loads(path.read_text()) == RECORDS
+    assert json.loads(path.read_text()) == records
+    assert "Zoë" in path.read_text()

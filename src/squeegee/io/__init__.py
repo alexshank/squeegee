@@ -61,7 +61,7 @@ def read_records(path: Path) -> Iterator[Record]:
 
 
 def write_records(path: Path, records: Iterable[Record]) -> int:
-    """Write ``records`` to ``path`` and return how many were written.
+    """Write ``records`` to ``path`` and return how many records, not rows, were written.
 
     Raises:
         FormatError: The extension is unsupported.

@@ -226,7 +226,8 @@ def test_the_writer_is_the_last_stage_and_records_each_written_row(workspace: Pa
     )[0]
     assert (name, kind) == ("write_csv", "accumulator")
     assert json.loads(record) == {"id": "1", "amount": "$29.99"}
-    assert json.loads(written) == "id,amount\n1,$29.99"
+    # the slice is what the file holds, CSV's own line ending included
+    assert json.loads(written) == "id,amount\r\n1,$29.99"
 
 
 def test_the_script_input_and_output_files_are_kept(workspace: Path) -> None:
@@ -237,9 +238,47 @@ def test_the_script_input_and_output_files_are_kept(workspace: Path) -> None:
     execute(workspace)
 
     kept = dict(events(workspace, "SELECT role, content FROM run_files"))
-    assert kept["script"] == (workspace / "clean.py").read_text()
-    assert kept["input"] == (workspace / "orders.csv").read_text()
-    assert kept["output"] == (workspace / "clean.csv").read_text()
+    # bytes, so the CSV writer's \r\n line endings are kept as written
+    assert kept["script"] == (workspace / "clean.py").read_bytes()
+    assert kept["input"] == (workspace / "orders.csv").read_bytes()
+    assert kept["output"] == (workspace / "clean.csv").read_bytes()
+    assert b"\r\n" in kept["output"]
+
+
+def test_a_writer_failing_partway_fails_the_run_and_writes_nothing(workspace: Path) -> None:
+    @stage
+    def widen_the_second(record: Record) -> Record:
+        return {**record, "extra": "x"} if record["id"] == "2" else record
+
+    (workspace / "clean.csv").write_text("an earlier output\n")
+
+    result = execute(workspace)
+
+    assert result.status == "failed"
+    assert result.failure is not None
+    assert (result.failure.stage_name, result.failure.record_index) == ("write_csv", 1)
+    # the earlier output is untouched and no partial file is left beside it
+    assert (workspace / "clean.csv").read_text() == "an earlier output\n"
+    assert [path.name for path in workspace.iterdir() if "partial" in path.name] == []
+    assert (1, 2, "error") in events(workspace)
+    assert events(workspace, "SELECT role FROM run_files WHERE role = 'output'") == []
+
+
+def test_a_record_of_csv_text_with_two_rows_is_one_written_slice(workspace: Path) -> None:
+    @stage
+    def two_rows(record: Record) -> str:
+        return f"id\n{record['id']}a\n{record['id']}b"
+
+    execute(workspace)
+
+    written = events(
+        workspace,
+        "SELECT e.output_json FROM record_events e JOIN run_stages rs ON rs.id = e.run_stage_id "
+        "WHERE rs.position = 2",
+    )
+    assert len(written) == 3
+    assert json.loads(written[0][0]) == "id\r\n1a\r\n1b"
+    assert (workspace / "clean.csv").read_text().count("\n") == 7
 
 
 def test_without_an_output_there_is_no_accumulator(workspace: Path) -> None:

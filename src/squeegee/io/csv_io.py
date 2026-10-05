@@ -41,29 +41,35 @@ def write_csv(path: Path, records: Iterable[Record | str]) -> Iterator[str]:
     A record may also be CSV text with its own header, as a stage that renders
     CSV returns, which is read back into rows rather than written verbatim.
     """
+    fieldnames: list[str] = []
+    header = ""
     written = 0
     with path.open("w", newline="", encoding="utf-8") as handle:
-        writer: csv.DictWriter[str] | None = None
         for record in records:
             rows = _rows(record)
-            if writer is None:
-                writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
-                writer.writeheader()
+            if not header:
+                fieldnames = list(rows[0])
+                # a header is the row whose values are its own names
+                header = _csv_text(fieldnames, [dict(zip(fieldnames, fieldnames, strict=True))])
+                handle.write(header)
             for row in rows:
-                if set(row) != set(writer.fieldnames):
+                if set(row) != set(fieldnames):
                     # writing anyway would silently drop the columns the header lacks
                     raise FormatError(
                         f"row {written} has fields {sorted(row)}, but the CSV header is "
-                        f"{sorted(writer.fieldnames)}; every record must have the same fields"
+                        f"{sorted(fieldnames)}; every record must have the same fields"
                     )
-                writer.writerow(row)
                 written += 1
+            body = _csv_text(fieldnames, rows)
+            handle.write(body)
             # like a read row, a written one carries the header, so it reads on its own
-            text = io.StringIO()
-            slice_writer = csv.DictWriter(text, fieldnames=writer.fieldnames, lineterminator="\n")
-            slice_writer.writeheader()
-            slice_writer.writerows(rows)
-            yield text.getvalue().rstrip("\n")
+            yield (header + body).rstrip("\r\n")
+
+
+def _csv_text(fieldnames: list[str], rows: list[Record]) -> str:
+    text = io.StringIO()
+    csv.DictWriter(text, fieldnames=fieldnames).writerows(rows)
+    return text.getvalue()
 
 
 def _rows(record: Record | str) -> list[Record]:
