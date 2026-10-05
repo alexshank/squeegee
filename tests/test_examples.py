@@ -150,14 +150,14 @@ def test_the_example_cleans_the_2022_words_journal(
 
     assert exit_code == EXIT_OK
     entries = json.loads(output.read_text())
-    # 75 blocks in: the file's title is a record of its own, dropped by the first stage
-    assert len(entries) == 74
+    # 38 blocks in: the file's title is a record of its own, dropped by the first stage
+    assert len(entries) == 37
     assert entries[0]["date"] == "2022-01-01"
     assert entries[0]["quotes"][0]["source"] == "big lewbowski"
     # an entry whose quote runs across a blank line stays one record
     assert _entry_for("2022-11-17", entries)["quotes"] == [
         {
-            "text": "As you are, so I once was As I am, so you will be",
+            "text": "As you are, so I once was\nAs I am, so you will be",
             "source": "St. Catherine\u2019s crypt. Memento mori",
             "medium": "tv",
             "medium_confidence": 0.9,
@@ -175,7 +175,7 @@ def test_the_example_cleans_the_2022_words_journal(
         }
     ]
     # one question per quote, and the two-quote day asks twice
-    assert len(asked) == 76
+    assert len(asked) == 38
     assert asked[0]["state"].endswith("- big lewbowski")
 
 

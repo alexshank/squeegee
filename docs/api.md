@@ -122,6 +122,21 @@ One run's metadata and totals. Same fields as a list item, plus provenance:
 
 `failure` is `null` unless `status` is `failed`. Because fail-fast is the default, this object is what the UI leads with on a failed run.
 
+### `GET /api/runs/{run_id}/files/{role}`
+
+A file the run kept, so it can be reviewed after the file itself has changed or gone. `role` is `script`, `input`, or `output`. A run with no output path, or one that failed before writing, keeps no output, and asking for it is an error.
+
+```json
+{
+  "role": "input",
+  "path": "examples/orders.csv",
+  "format": "csv",
+  "content": "Order ID,Email,Amount,Placed On,Items\n1001,ada@example.com,$29.99,2026-09-01,widget x2; gadget x1\n..."
+}
+```
+
+`format` is `csv` or `json` where the reader or writer knows it, and `null` where the UI should infer it.
+
 ### `GET /api/runs/{run_id}/stages`
 
 Every stage of the run in declaration order, with counts and timings. Not paginated; a pipeline is a handful of stages.
@@ -130,10 +145,11 @@ Every stage of the run in declaration order, with counts and timings. Not pagina
 {
   "items": [
     {
-      "position": 0,
+      "position": 3,
       "stage_version_id": 7,
       "name": "parse_amount",
       "description": "Convert the amount column from a currency string to cents.",
+      "kind": "map",
       "records_in": 10000,
       "records_ok": 9994,
       "records_dropped": 0,
@@ -145,6 +161,8 @@ Every stage of the run in declaration order, with counts and timings. Not pagina
   ]
 }
 ```
+
+`kind` is `source` for stage zero, the reader; `accumulator` for the writer that ends a run given an output path; and `map` for every stage of the script.
 
 ### `GET /api/runs/{run_id}/stages/{position}`
 

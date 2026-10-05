@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { activate } from "../RunsList";
 import type { RecordEvent, Status } from "../api";
 import { StatusPill } from "./StatusPill";
-import { Empty, outlineButton } from "./shared";
+import { Empty, formatDuration, outlineButton } from "./shared";
 
 const STATUSES: (Status | null)[] = [null, "ok", "dropped", "error"];
 const COLOURS = {
@@ -104,7 +104,7 @@ export function RecordsPane(props: Props) {
                   <StatusPill status={event.status} />
                 </td>
                 <td style={{ padding: "0.25rem", textAlign: "right", fontFamily: "var(--mono)" }}>
-                  {event.duration_us}µs
+                  {formatDuration(event.duration_us)}
                 </td>
               </tr>
             ))}

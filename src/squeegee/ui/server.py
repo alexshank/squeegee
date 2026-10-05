@@ -1,6 +1,6 @@
 """The local, read-only HTTP server.
 
-Standard library only: eight read-only endpoints and a static file handler do
+Standard library only: nine read-only endpoints and a static file handler do
 not need a framework. See docs/decisions/0002-react-ui-on-a-stdlib-server.md,
 and the hand-written server checklist in docs/ui-specification.md, every item
 of which is implemented here and tested.
@@ -67,6 +67,11 @@ def _stages(database: Path, match: re.Match[str], params: Params) -> dict[str, A
 @route(r"/api/runs/(?P<run_id>\d+)/stages/(?P<position>\d+)")
 def _stage(database: Path, match: re.Match[str], params: Params) -> dict[str, Any]:
     return queries.stage_detail(database, int(match["run_id"]), int(match["position"]))
+
+
+@route(r"/api/runs/(?P<run_id>\d+)/files/(?P<role>script|input|output)")
+def _file(database: Path, match: re.Match[str], params: Params) -> dict[str, Any]:
+    return queries.run_file(database, int(match["run_id"]), match["role"])
 
 
 @route(r"/api/runs/(?P<run_id>\d+)/stages/(?P<position>\d+)/records")

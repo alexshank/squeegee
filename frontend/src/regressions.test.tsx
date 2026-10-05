@@ -90,6 +90,9 @@ function stubApi(stubs: Stubs = {}) {
   const requested: string[] = [];
   vi.stubGlobal("fetch", (url: string) => {
     requested.push(url);
+    if (url.includes("/files/")) {
+      return ok({ role: "script", path: "clean_orders.py", format: null, content: "# the script" });
+    }
     if (/\/fields\/.+/.test(url)) return ok(stubs.fieldDetail ?? null);
     if (url.includes("/fields")) {
       return ok({
@@ -409,7 +412,7 @@ test("top values of mixed types do not collide as React keys", async () => {
         stats: {
           field: "id",
           inferred_type: "mixed",
-          non_null_count: 2,
+          non_null_count: 5,
           null_count: 0,
           distinct_count: 2,
           min: null,
@@ -442,4 +445,50 @@ test("the code block takes its colours from the UI variables", () => {
 
   expect(block?.style.color).toBe("var(--text)");
   expect(block?.style.backgroundColor).toBe("transparent");
+});
+
+test("the script button opens the whole script the run kept", async () => {
+  const requested = stubApi();
+  window.history.pushState({}, "", "/runs/1");
+  render(<App />);
+
+  fireEvent.click(await screen.findByRole("button", { name: "script" }));
+
+  expect(await screen.findByText("# the script")).toBeDefined();
+  expect(window.location.search).toContain("file=script");
+  expect(requested.some((url) => url.endsWith("/runs/1/files/script"))).toBe(true);
+});
+
+test("a field whose every value is different says so instead of ranking them", async () => {
+  const stats = {
+    field: "id",
+    inferred_type: "string",
+    non_null_count: 2,
+    null_count: 0,
+    distinct_count: 2,
+    min: null,
+    max: null,
+    mean: null,
+    median: null,
+    sum: null,
+  };
+  stubApi({
+    fieldDetail: {
+      field: "id",
+      inferred_type: "string",
+      after: {
+        stats,
+        histogram: null,
+        top_values: [
+          { value: "a", count: 1 },
+          { value: "b", count: 1 },
+        ],
+      },
+      before: null,
+    },
+  });
+  renderRun("stage=0&field=id");
+
+  expect(await screen.findByText("All Records Unique")).toBeDefined();
+  expect(screen.queryByText(/Most Frequent/)).toBeNull();
 });

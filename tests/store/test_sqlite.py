@@ -55,6 +55,7 @@ def populate(store: Store, a_stage: Stage) -> None:
         record_output={"id": "1"},
         duration_us=38,
     )
+    store.add_file(run_id, "input", Path("orders.csv"), "id\n1\n", "csv")
     store.add_run_event(run_id, "finished", {"records_out": 1})
 
 

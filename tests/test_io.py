@@ -14,6 +14,7 @@ from squeegee.io import (
     reader_for,
     register_reader,
     write_records,
+    writer_for,
 )
 from squeegee.io.text_io import blocks_starting_with
 
@@ -207,3 +208,12 @@ def test_a_broken_json_array_is_a_format_error(tmp_path: Path) -> None:
 def test_csv_text_with_no_rows_is_refused_rather_than_lost(tmp_path: Path) -> None:
     with pytest.raises(FormatError, match="has a header but no rows"):
         write_records(tmp_path / "out.csv", ["hello"])  # type: ignore[list-item]
+
+
+def test_a_json_array_is_written_one_element_at_a_time_and_reads_back(tmp_path: Path) -> None:
+    path = tmp_path / "out.json"
+
+    assert list(writer_for(path)(path, RECORDS)) == [
+        json.dumps(record, indent=2) for record in RECORDS
+    ]
+    assert json.loads(path.read_text()) == RECORDS

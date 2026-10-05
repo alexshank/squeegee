@@ -30,7 +30,8 @@ class Stage:
     source_sha256: str
     input_type: str | None
     output_type: str | None
-    # "source" for the reader that breaks the input into records, "map" otherwise
+    # "source" for the reader that breaks the input into records, "accumulator" for
+    # the writer that collects them into the output file, "map" otherwise
     kind: str = "map"
     # how the UI highlights this stage's inputs; None means it infers
     input_format: str | None = None
@@ -106,18 +107,18 @@ def stage(
     return register if func is None else register(func)
 
 
-def source_stage(reader: Callable[[Any], Any], input_format: str | None) -> Stage:
-    """Describe the reader a run uses as its stage zero."""
-    source = _source_of(reader)
+def file_stage(function: Callable[..., Any], kind: str, input_format: str | None = None) -> Stage:
+    """Describe the reader a run starts with, or the writer it ends with, as a stage."""
+    source = _source_of(function)
     return Stage(
-        name=reader.__name__,
-        description=_first_docstring_line(reader),
-        func=reader,
+        name=function.__name__,
+        description=_first_docstring_line(function),
+        func=function,
         source_text=source,
         source_sha256=sha256(source.encode()).hexdigest(),
         input_type=None,
         output_type=None,
-        kind="source",
+        kind=kind,
         input_format=input_format,
     )
 

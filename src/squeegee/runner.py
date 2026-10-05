@@ -14,8 +14,8 @@ from pathlib import Path
 from typing import Any
 
 from squeegee.errors import SqueegeeError
-from squeegee.io import FORMATS, Reader, reader_for, write_records, writer_for
-from squeegee.stages import Stage, registered_stages, source_stage
+from squeegee.io import FORMATS, Reader, Writer, reader_for, writer_for
+from squeegee.stages import Stage, file_stage, registered_stages
 from squeegee.store import Store
 
 Record = dict[str, Any]
@@ -62,7 +62,9 @@ def run(
 
     The reader that breaks the input into records is recorded as stage zero,
     with each record's raw slice as its input. The script's stages follow in
-    declaration order, one record at a time. A stage returning
+    declaration order, one record at a time. With an output path, the writer is
+    the last stage, the accumulator, recording the slice each surviving record
+    was written as. The script, input and output files are kept too. A stage returning
     None drops its record; a stage raising aborts the run unless
     ``continue_on_error`` is set, and either way the outcome is recorded.
 
@@ -71,8 +73,14 @@ def run(
             an unsupported extension on either side.
     """
     stages = registered_stages()
-    _check_wiring(stages, input_path, output_path, limit, sample)
+    _check_wiring(stages, input_path, limit, sample)
     reader = reader_for(input_path)
+    writer = None if output_path is None else writer_for(output_path)
+    pipeline = [
+        file_stage(reader, "source", FORMATS.get(reader)),
+        *stages,
+        *([] if writer is None else [file_stage(writer, "accumulator")]),
+    ]
     started = time.perf_counter_ns()
 
     with Store(database_path) as store:
@@ -88,12 +96,19 @@ def run(
                 "continue_on_error": continue_on_error,
             },
         )
+        store.add_file(run_id, "script", script_path, script_path.read_text(encoding="utf-8"))
+        store.add_file(
+            run_id,
+            "input",
+            input_path,
+            input_path.read_text(encoding="utf-8", errors="replace"),
+            FORMATS.get(reader),
+        )
         run_stage_ids = [
-            store.register_stage(run_id, position, stage)
-            for position, stage in enumerate([source_stage(reader, FORMATS.get(reader)), *stages])
+            store.register_stage(run_id, position, stage) for position, stage in enumerate(pipeline)
         ]
         counts = {"in": 0, "out": 0, "dropped": 0, "errored": 0}
-        survivors: list[Record] = []
+        survivors: list[tuple[int, Record]] = []
         failure: Failure | None = None
 
         for index, (raw, source, read_us) in enumerate(
@@ -119,7 +134,7 @@ def run(
                 counts=counts,
             )
             if outcome is not None:
-                survivors.append(outcome)
+                survivors.append((record_id, outcome))
                 counts["out"] += 1
             if failure is not None:
                 if not continue_on_error:
@@ -129,8 +144,8 @@ def run(
 
         status = "failed" if failure is not None else "finished"
         # a failed run writes no output file: half a cleaned CSV is worse than none
-        if output_path is not None and failure is None:
-            write_records(output_path, survivors)
+        if output_path is not None and writer is not None and failure is None:
+            _accumulate(store, run_id, run_stage_ids[-1], writer, output_path, survivors)
         duration_us = (time.perf_counter_ns() - started) // 1_000
         store.add_run_event(run_id, status, {**counts, "duration_us": duration_us})
 
@@ -213,7 +228,6 @@ def _drive(
 def _check_wiring(
     stages: list[Stage],
     input_path: Path,
-    output_path: Path | None,
     limit: int | None,
     sample: int | None,
 ) -> None:
@@ -226,8 +240,6 @@ def _check_wiring(
         )
     if not input_path.is_file():
         raise SqueegeeError(f"input file {input_path} does not exist")
-    if output_path is not None:
-        writer_for(output_path)
 
 
 def _selected(
@@ -249,6 +261,33 @@ def _timed(pairs: Iterator[tuple[str, Record]]) -> Iterator[tuple[str, Record, i
     for raw, record in pairs:
         yield raw, record, _elapsed_us(started)
         started = time.perf_counter_ns()
+
+
+def _accumulate(
+    store: Store,
+    run_id: int,
+    run_stage_id: int,
+    writer: Writer,
+    output_path: Path,
+    survivors: list[tuple[int, Record]],
+) -> None:
+    started = time.perf_counter_ns()
+    # the writer goes first, so zip stops only once it has finished and closed its file
+    for written, (record_id, record) in zip(
+        writer(output_path, [record for _, record in survivors]), survivors, strict=True
+    ):
+        store.add_record_event(
+            record_id=record_id,
+            run_stage_id=run_stage_id,
+            status="ok",
+            record_input=record,
+            record_output=written,
+            duration_us=_elapsed_us(started),
+        )
+        started = time.perf_counter_ns()
+    store.add_file(
+        run_id, "output", output_path, output_path.read_text(encoding="utf-8"), FORMATS.get(writer)
+    )
 
 
 def _elapsed_us(started_ns: int) -> int:

@@ -321,7 +321,7 @@ test("closing a modal the user opened walks back instead of stacking history", a
 
   fireEvent.click(await screen.findByLabelText("source of 0 normalize_headers"));
   await waitFor(() => expect(window.location.search).toContain("source=0"));
-  fireEvent.click(screen.getByLabelText("close source"));
+  fireEvent.click(screen.getByLabelText(/close source/));
   await waitFor(() => expect(window.location.search).not.toContain("source="));
 
   // replacing on close would leave an entry identical to the one before it, so
@@ -336,7 +336,7 @@ test("closing a deep linked source modal clears the parameter", async () => {
   stubApi();
   render(<App />);
 
-  fireEvent.click(await screen.findByLabelText("close source"));
+  fireEvent.click(await screen.findByLabelText(/close source/));
 
   await waitFor(() => expect(window.location.search).not.toContain("source="));
   expect(document.querySelector("dialog")).toBeNull();

@@ -18,10 +18,11 @@ interface Props {
   value: unknown;
   // what the stage says its raw input is; only consulted once JSON has been ruled out
   format?: string | null;
+  maxHeight?: string;
 }
 
 /** A value as raw text, highlighted as JSON or CSV when it is one, else plain. */
-export function RawValue({ label, value, format = null }: Props) {
+export function RawValue({ label, value, format = null, maxHeight = "20rem" }: Props) {
   const { text, language } = infer(value, format);
   const [asTable, setAsTable] = useState(false);
   const preStyle = {
@@ -33,8 +34,10 @@ export function RawValue({ label, value, format = null }: Props) {
     // as they were written and the panel around it keeps its size
     whiteSpace: "pre" as const,
     maxWidth: "100%",
-    maxHeight: "20rem",
+    maxHeight,
     overflow: "auto",
+    // a horizontal scrollbar can draw over the last line, so it gets room of its own
+    paddingBottom: "0.75rem",
   };
   return (
     <>
@@ -51,7 +54,7 @@ export function RawValue({ label, value, format = null }: Props) {
         )}
       </div>
       {language === null && <pre style={preStyle}>{text}</pre>}
-      {language === "csv" && asTable && <CsvTable text={text} />}
+      {language === "csv" && asTable && <CsvTable text={text} maxHeight={maxHeight} />}
       {language === "csv" && !asTable && (
         <pre style={preStyle}>
           {csvRows(text).map((row, number) => (
@@ -89,7 +92,7 @@ export function RawValue({ label, value, format = null }: Props) {
   );
 }
 
-function CsvTable({ text }: { text: string }) {
+function CsvTable({ text, maxHeight }: { text: string; maxHeight: string }) {
   const [header = [], ...rows] = csvRows(text).map((row) => row.map(unquote));
   const cell = {
     padding: "0.15rem 0.5rem",
@@ -100,7 +103,7 @@ function CsvTable({ text }: { text: string }) {
     whiteSpace: "pre" as const,
   };
   return (
-    <div style={{ maxWidth: "100%", maxHeight: "20rem", overflow: "auto" }}>
+    <div style={{ maxWidth: "100%", maxHeight, overflow: "auto", paddingBottom: "0.75rem" }}>
       <table style={{ borderCollapse: "collapse", fontFamily: "var(--mono)", fontSize: "0.8rem" }}>
         <thead>
           <tr>
@@ -150,6 +153,8 @@ export function infer(
   } catch {
     // not JSON, so it is whatever the stage says it is, or plain text
   }
+  // a JSON Lines file parses as no single value, but is still JSON to highlight
+  if (format === "json") return { text: value, language: "json" };
   return { text: value, language: format === "csv" || looksLikeCsv(value) ? "csv" : null };
 }
 

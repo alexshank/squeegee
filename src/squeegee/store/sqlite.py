@@ -26,6 +26,7 @@ TABLES = (
     "run_stages",
     "records",
     "record_events",
+    "run_files",
 )
 
 # events are buffered so that a ten thousand record run does not pay one
@@ -36,7 +37,7 @@ _SCHEMA = Path(__file__).with_name("schema.sql")
 
 # bumped whenever schema.sql changes shape; history is append-only, so an older
 # database is refused rather than migrated
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 class Store:
@@ -148,6 +149,16 @@ class Store:
         )
         self._connection.commit()
         return _row_id(cursor)
+
+    def add_file(
+        self, run_id: int, role: str, path: Path, content: str, file_format: str | None = None
+    ) -> None:
+        """Keep a file the run read or wrote: its script, its input, or its output."""
+        self._connection.execute(
+            "INSERT INTO run_files (run_id, role, path, format, content) VALUES (?, ?, ?, ?, ?)",
+            (run_id, role, str(path), file_format, content),
+        )
+        self._connection.commit()
 
     def add_record(self, run_id: int, record_index: int, source: Any) -> int:
         """Store a record as it was read, and return its id.

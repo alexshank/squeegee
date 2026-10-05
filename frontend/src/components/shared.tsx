@@ -45,3 +45,12 @@ export function Label({ children }: { children: string }) {
     </div>
   );
 }
+
+/** Elapsed time in whichever unit keeps it short: µs, ms, seconds, or minutes. */
+export function formatDuration(us: number): string {
+  if (us < 1_000) return `${us}µs`;
+  if (us < 1_000_000) return `${(us / 1_000).toFixed(1)}ms`;
+  if (us < 60_000_000) return `${(us / 1_000_000).toFixed(2)}s`;
+  const seconds = Math.round(us / 1_000_000);
+  return `${Math.floor(seconds / 60)}m ${String(seconds % 60).padStart(2, "0")}s`;
+}

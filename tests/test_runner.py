@@ -210,6 +210,49 @@ def test_stage_zero_records_the_raw_row_each_record_was_read_from(workspace: Pat
     assert json.loads(read) == {"id": "1", "amount": "$29.99"}
 
 
+def test_the_writer_is_the_last_stage_and_records_each_written_row(workspace: Path) -> None:
+    @stage
+    def identity(record: Record) -> Record:
+        return record
+
+    execute(workspace)
+
+    name, kind, record, written = events(
+        workspace,
+        "SELECT sv.name, sv.kind, e.input_json, e.output_json FROM record_events e "
+        "JOIN records r ON r.id = e.record_id JOIN run_stages rs ON rs.id = e.run_stage_id "
+        "JOIN stage_versions sv ON sv.id = rs.stage_version_id "
+        "WHERE r.record_index = 0 AND rs.position = 2",
+    )[0]
+    assert (name, kind) == ("write_csv", "accumulator")
+    assert json.loads(record) == {"id": "1", "amount": "$29.99"}
+    assert json.loads(written) == "id,amount\n1,$29.99"
+
+
+def test_the_script_input_and_output_files_are_kept(workspace: Path) -> None:
+    @stage
+    def identity(record: Record) -> Record:
+        return record
+
+    execute(workspace)
+
+    kept = dict(events(workspace, "SELECT role, content FROM run_files"))
+    assert kept["script"] == (workspace / "clean.py").read_text()
+    assert kept["input"] == (workspace / "orders.csv").read_text()
+    assert kept["output"] == (workspace / "clean.csv").read_text()
+
+
+def test_without_an_output_there_is_no_accumulator(workspace: Path) -> None:
+    @stage
+    def identity(record: Record) -> Record:
+        return record
+
+    execute(workspace, output=False)
+
+    assert events(workspace, "SELECT COUNT(*) FROM run_stages")[0][0] == 2
+    assert events(workspace, "SELECT role FROM run_files WHERE role = 'output'") == []
+
+
 def test_limit_processes_only_the_first_records(workspace: Path) -> None:
     @stage
     def identity(record: Record) -> Record:

@@ -3,7 +3,8 @@
 A reader yields ``(raw, record)`` pairs: the slice of the input a record came
 from, and the record parsed out of it. The runner records each pair as the
 source stage's input and output, so how the input was broken up is visible in
-the run like any other stage.
+the run like any other stage. A writer mirrors it: it yields the slice each
+record was written as, recorded as the accumulator stage's output.
 
 A reader is resolved by extension, then by sniffing the content, falling back
 to plain text. Adding a format means adding a module here and an entry to the
@@ -22,6 +23,8 @@ from squeegee.io import csv_io, json_io, text_io
 
 Record = dict[str, Any]
 Reader = Callable[[Path], Iterator[tuple[str, Record]]]
+# a writer yields each record's written slice, so the run can record it like a read one
+Writer = Callable[[Path, Iterable[Record]], Iterator[str]]
 
 _READERS: dict[str, Reader] = {
     ".csv": csv_io.read_csv,
@@ -32,17 +35,23 @@ _READERS: dict[str, Reader] = {
     ".md": text_io.read_text,
 }
 
-# what the UI highlights a reader's raw slices as; anything else it infers
-FORMATS: dict[Reader, str] = {csv_io.read_csv: "csv", json_io.read_json: "json"}
+# what the UI highlights a file and its raw slices as; anything else it infers
+FORMATS: dict[Reader | Writer, str] = {
+    csv_io.read_csv: "csv",
+    csv_io.write_csv: "csv",
+    json_io.read_json: "json",
+    json_io.write_json: "json",
+    json_io.write_json_lines: "json",
+}
 
 # a reader a script registered for itself, which wins over the table above
 _CUSTOM_READERS: dict[str, Reader] = {}
 
-_WRITERS = {
-    ".csv": csv_io.write,
-    ".json": json_io.write_array,
-    ".jsonl": json_io.write_lines,
-    ".ndjson": json_io.write_lines,
+_WRITERS: dict[str, Writer] = {
+    ".csv": csv_io.write_csv,
+    ".json": json_io.write_json,
+    ".jsonl": json_io.write_json_lines,
+    ".ndjson": json_io.write_json_lines,
 }
 
 
@@ -57,7 +66,7 @@ def write_records(path: Path, records: Iterable[Record]) -> int:
     Raises:
         FormatError: The extension is unsupported.
     """
-    return writer_for(path)(path, records)
+    return len(list(writer_for(path)(path, records)))
 
 
 def reader_for(path: Path) -> Reader:
@@ -85,7 +94,7 @@ def clear_readers() -> None:
     _CUSTOM_READERS.clear()
 
 
-def writer_for(path: Path) -> Callable[[Path, Iterable[Record]], int]:
+def writer_for(path: Path) -> Writer:
     """Return the writer for ``path``, so a run can fail before it starts."""
     try:
         return _WRITERS[path.suffix.lower()]

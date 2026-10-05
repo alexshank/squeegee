@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS stage_versions (
     description   TEXT,
     input_type    TEXT,
     output_type   TEXT,
-    kind          TEXT NOT NULL CHECK (kind IN ('source', 'map')),
+    kind          TEXT NOT NULL CHECK (kind IN ('source', 'map', 'accumulator')),
     input_format  TEXT,
     first_seen_at TEXT NOT NULL,
     UNIQUE (name, source_sha256)
@@ -62,6 +62,17 @@ CREATE TABLE IF NOT EXISTS record_events (
     error_message TEXT,
     error_traceback TEXT,
     duration_us   INTEGER NOT NULL
+);
+
+-- the files a run read and wrote, kept so a run can be reviewed without them
+CREATE TABLE IF NOT EXISTS run_files (
+    id       INTEGER PRIMARY KEY,
+    run_id   INTEGER NOT NULL REFERENCES runs(id),
+    role     TEXT    NOT NULL CHECK (role IN ('script', 'input', 'output')),
+    path     TEXT    NOT NULL,
+    format   TEXT,
+    content  TEXT    NOT NULL,
+    UNIQUE (run_id, role)
 );
 
 CREATE INDEX IF NOT EXISTS idx_records_run   ON records (run_id, record_index);

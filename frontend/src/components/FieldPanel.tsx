@@ -49,7 +49,13 @@ function Side({ title, distribution }: { title: string; distribution: Distributi
         {stats.min !== null && <Figure name="min" value={round(stats.min)} />}
         {stats.max !== null && <Figure name="max" value={round(stats.max)} />}
       </dl>
-      {top_values && top_values.length > 0 && (
+      {/* when every value occurs once, a "most frequent" list would be arbitrary */}
+      {top_values && stats.distinct_count === stats.non_null_count && (
+        <div style={{ marginTop: "0.5rem", fontSize: "0.7rem", color: "var(--muted)" }}>
+          All Records Unique
+        </div>
+      )}
+      {top_values && top_values.length > 0 && stats.distinct_count < stats.non_null_count && (
         <>
           <div style={{ marginTop: "0.5rem", fontSize: "0.7rem", color: "var(--muted)" }}>
             {`Top ${Math.min(top_values.length, 5)} Most Frequent`}
