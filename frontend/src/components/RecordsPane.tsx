@@ -1,10 +1,16 @@
 import { useEffect, useState } from "react";
 import { activate } from "../RunsList";
 import type { RecordEvent, Status } from "../api";
-import { Empty } from "./StagesPane";
 import { StatusPill } from "./StatusPill";
+import { Empty, outlineButton } from "./shared";
 
 const STATUSES: (Status | null)[] = [null, "ok", "dropped", "error"];
+const COLOURS = {
+  all: "var(--text)",
+  ok: "var(--ok)",
+  dropped: "var(--dropped)",
+  error: "var(--error)",
+};
 
 interface Props {
   records: RecordEvent[];
@@ -41,13 +47,10 @@ export function RecordsPane(props: Props) {
             type="button"
             onClick={() => props.onStatus(option)}
             style={{
-              border: `1px solid ${option === status ? "var(--accent)" : "var(--border)"}`,
-              background: "none",
-              color: "var(--text)",
-              cursor: "pointer",
-              font: "inherit",
-              fontSize: "0.75rem",
-              padding: "0.1rem 0.5rem",
+              ...outlineButton,
+              border: `1px solid ${option === status ? COLOURS[option ?? "all"] : "var(--border)"}`,
+              background: option === status ? "var(--surface)" : "none",
+              color: COLOURS[option ?? "all"],
             }}
           >
             {option ?? "all"}
@@ -55,7 +58,7 @@ export function RecordsPane(props: Props) {
         ))}
         <input
           value={typed.value}
-          placeholder="search stored JSON"
+          placeholder="search inputs and outputs"
           onChange={(event) => typed.onChange(event.target.value)}
           style={{
             flex: 1,
@@ -127,15 +130,7 @@ export function RecordsPane(props: Props) {
             type="button"
             onClick={props.onLoadMore}
             disabled={loading}
-            style={{
-              border: "1px solid var(--border)",
-              background: "none",
-              color: "var(--text)",
-              cursor: loading ? "default" : "pointer",
-              font: "inherit",
-              fontSize: "0.75rem",
-              padding: "0.1rem 0.5rem",
-            }}
+            style={{ ...outlineButton, cursor: loading ? "default" : "pointer" }}
           >
             {loading ? "loading…" : "load more"}
           </button>

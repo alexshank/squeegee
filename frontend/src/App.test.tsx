@@ -232,10 +232,10 @@ test("the three panes are on screen at once", async () => {
   render(<App />);
 
   expect((await screen.findAllByText("0 normalize_headers")).length).toBe(2);
-  expect(await screen.findByText("record 8 at this stage")).toBeDefined();
+  expect(await screen.findByText("record 8 at stage 1")).toBeDefined();
   expect(await screen.findByText("record 8")).toBeDefined();
   // the source is behind the stage's code icon now, not on the page
-  expect(document.querySelector("pre")).toBeNull();
+  expect(screen.queryByRole("button", { name: "copy" })).toBeNull();
 });
 
 test("the centre panel shows the chosen record at the chosen stage", async () => {
@@ -243,13 +243,14 @@ test("the centre panel shows the chosen record at the chosen stage", async () =>
   stubApi();
   render(<App />);
 
-  const panel = (await screen.findByText("record 8 at this stage")).parentElement as HTMLElement;
+  const panel = (await screen.findByText("record 8 at stage 0")).parentElement as HTMLElement;
 
-  expect(within(panel).getByText("input")).toBeDefined();
-  expect(within(panel).getByText("output")).toBeDefined();
-  // stage 0's own input and output, not the whole trace
-  expect(within(panel).getAllByText("Order ID").length).toBe(1);
-  expect(within(panel).getByText("order_id")).toBeDefined();
+  // each side says which format it was inferred as
+  expect(within(panel).getByText("input · json")).toBeDefined();
+  expect(within(panel).getByText("output · json")).toBeDefined();
+  // stage 0's own input and output as raw JSON, not the whole trace
+  expect(within(panel).getAllByText(/"Order ID"/)).toHaveLength(1);
+  expect(panel.textContent).toContain('"order_id"');
 });
 
 test("a record that errored shows the reason and a way to the source", async () => {
@@ -257,7 +258,7 @@ test("a record that errored shows the reason and a way to the source", async () 
   stubApi();
   render(<App />);
 
-  const panel = (await screen.findByText("record 8 at this stage")).parentElement as HTMLElement;
+  const panel = (await screen.findByText("record 8 at stage 1")).parentElement as HTMLElement;
   expect(
     within(panel).getByText(/ValueError: could not convert string to float: 'n\/a'/),
   ).toBeDefined();

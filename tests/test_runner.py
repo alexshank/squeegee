@@ -100,8 +100,8 @@ def test_returning_none_drops_the_record_and_later_stages_never_see_it(workspace
 
     assert (result.records_dropped, result.records_out) == (1, 2)
     assert seen_by_second == ["1", "3"]
-    assert (1, 0, "dropped") in events(workspace)
-    assert not [event for event in events(workspace) if event[0] == 1 and event[1] == 1]
+    assert (1, 1, "dropped") in events(workspace)
+    assert not [event for event in events(workspace) if event[0] == 1 and event[1] == 2]
 
 
 def test_a_raising_stage_aborts_the_run_and_keeps_what_came_before(workspace: Path) -> None:
@@ -123,8 +123,9 @@ def test_a_raising_stage_aborts_the_run_and_keeps_what_came_before(workspace: Pa
     assert (result.failure.stage_name, result.failure.record_index) == ("reject_the_third", 2)
     assert result.failure.error_type == "ValueError"
     assert result.records_in == 3
-    # the two records processed before the failure are still recorded
-    assert len([event for event in events(workspace) if event[2] == "ok"]) == 5
+    # the two records processed before the failure are still recorded, after
+    # stage zero read all three
+    assert len([event for event in events(workspace) if event[2] == "ok"]) == 8
     assert not (workspace / "clean.csv").exists()
 
 
@@ -169,7 +170,7 @@ def test_a_stage_mutating_in_place_does_not_corrupt_the_stored_input(workspace: 
     stored = events(
         workspace,
         "SELECT input_json FROM record_events JOIN records ON records.id = record_id "
-        "WHERE record_index = 0",
+        "JOIN run_stages ON run_stages.id = run_stage_id WHERE record_index = 0 AND position = 1",
     )[0][0]
     assert json.loads(stored)["amount"] == "$29.99"
 
@@ -184,9 +185,29 @@ def test_the_first_stage_sees_the_record_as_read(workspace: Path) -> None:
     source, first_input = events(
         workspace,
         "SELECT records.source_json, record_events.input_json FROM record_events "
-        "JOIN records ON records.id = record_id WHERE record_index = 0",
+        "JOIN records ON records.id = record_id "
+        "JOIN run_stages ON run_stages.id = run_stage_id WHERE record_index = 0 AND position = 1",
     )[0]
     assert json.loads(source) == json.loads(first_input)
+
+
+def test_stage_zero_records_the_raw_row_each_record_was_read_from(workspace: Path) -> None:
+    @stage
+    def identity(record: Record) -> Record:
+        return record
+
+    execute(workspace)
+
+    name, kind, raw, read = events(
+        workspace,
+        "SELECT sv.name, sv.kind, e.input_json, e.output_json FROM record_events e "
+        "JOIN records r ON r.id = e.record_id JOIN run_stages rs ON rs.id = e.run_stage_id "
+        "JOIN stage_versions sv ON sv.id = rs.stage_version_id "
+        "WHERE r.record_index = 0 AND rs.position = 0",
+    )[0]
+    assert (name, kind) == ("read_csv", "source")
+    assert json.loads(raw) == "id,amount\n1,$29.99"
+    assert json.loads(read) == {"id": "1", "amount": "$29.99"}
 
 
 def test_limit_processes_only_the_first_records(workspace: Path) -> None:
@@ -195,6 +216,17 @@ def test_limit_processes_only_the_first_records(workspace: Path) -> None:
         return record
 
     assert execute(workspace, limit=2).records_in == 2
+
+
+@pytest.mark.parametrize("option", ["limit", "sample"])
+def test_a_negative_count_is_refused_before_the_run_starts(workspace: Path, option: str) -> None:
+    @stage
+    def identity(record: Record) -> Record:
+        return record
+
+    with pytest.raises(SqueegeeError, match="must be 0 or more"):
+        execute(workspace, **{option: -1})  # type: ignore[arg-type]
+    assert not (workspace / ".squeegee" / "squeegee.db").exists()
 
 
 def test_sampling_is_reproducible_with_a_seed(workspace: Path) -> None:

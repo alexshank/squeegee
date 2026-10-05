@@ -2,6 +2,7 @@
 
 Run it with::
 
+    export TYPESAFE_API_KEY=...
     squeegee run examples/words_2022.py --input examples/words-2022.txt --output /tmp/words.json
 
 The input is a file a person kept by hand, so it has no header row and its
@@ -10,7 +11,10 @@ registered below is the only custom thing here: every field is parsed by an
 ordinary stage, so each step shows up in the recorded run.
 """
 
+import json
+import os
 import re
+import urllib.request
 
 from squeegee import stage
 from squeegee.io import register_reader
@@ -25,6 +29,18 @@ YEAR = 2022
 
 DATE_AND_BODY = re.compile(r"^(\d{1,2})/(\d{1,2})(?:/(\d{2,4}))?\s*-?\s*(.*)$", re.DOTALL)
 QUOTED = re.compile("“(.+?)”([^“]*)", re.DOTALL)
+
+# every entry in the file is a quote, so "quote or word" tells nothing; where a
+# quote came from is the split worth having
+MEDIA = {
+    "film": "A movie",
+    "tv": "A TV series, sitcom or streaming show",
+    "music": "A song, album or rapper",
+    "book": "A novel, poem or other written work",
+    "anime": "An anime or manga",
+    "person": "A real person speaking for themselves, such as a politician or writer",
+    "other": "Anything else, such as an overheard remark or an inscription",
+}
 
 
 @stage
@@ -72,6 +88,41 @@ def attribute_each_quote(record):
         quote["source"] = quote["source"].strip().lstrip("-").strip() or None
     record["quote_count"] = len(record["quotes"])
     return record
+
+
+@stage
+def classify_each_quote(record):
+    """Ask Jev which kind of work each quote came from."""
+    for quote in record["quotes"]:
+        answer = _ask_jev(f"“{quote['text']}” - {quote['source'] or 'unknown'}")
+        quote["medium"] = answer["choice"]
+        quote["medium_confidence"] = answer["confidence"]
+    return record
+
+
+def _ask_jev(state):
+    request = urllib.request.Request(
+        "https://api.typesafe.ai/v1/systemone",
+        data=json.dumps(
+            {
+                "state": state,
+                "model": "jev-latest",
+                "questions": {
+                    "medium": {
+                        "type": "choice",
+                        "instructions": "Which kind of work is this quote from?",
+                        "criteria": MEDIA,
+                    }
+                },
+            }
+        ).encode(),
+        headers={
+            "Authorization": f"Bearer {os.environ['TYPESAFE_API_KEY']}",
+            "Content-Type": "application/json",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=10) as response:
+        return json.load(response)["answers"]["medium"]
 
 
 def _split_on_the_dash(body):

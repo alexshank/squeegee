@@ -79,9 +79,11 @@ make ui-check  # biome, tsc --noEmit, vitest
 Then try it:
 
 ```
-uv run squeegee run examples/clean_orders.py --input examples/orders.csv --output /tmp/clean.csv --db /tmp/squeegee.db
-uv run squeegee ui --db /tmp/squeegee.db
+uv run squeegee run examples/clean_orders.py --input examples/orders.csv --output /tmp/clean.csv
+uv run squeegee ui
 ```
+
+Both default to `/tmp/squeegee.db`. Pass `-n 10` to `run` to read only the first ten records.
 
 Every check runs locally. There is no CI, deliberately; see [docs/engineering-standards.md](docs/engineering-standards.md).
 

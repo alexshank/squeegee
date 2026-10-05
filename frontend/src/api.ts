@@ -77,7 +77,8 @@ export type Record_ = Record<string, unknown>;
 export interface RecordEvent {
   record_index: number;
   status: Status;
-  input: Record_;
+  // stage zero's input is the raw slice of the file, so not always a record
+  input: unknown;
   output: Record_ | null;
   error_type: string | null;
   error_message: string | null;
@@ -87,16 +88,18 @@ export interface RecordEvent {
 export interface TraceEvent extends Omit<RecordEvent, "record_index"> {
   position: number;
   stage_name: string;
+  input_format: string | null;
   changed_fields: string[];
 }
 
 export interface Trace {
   record_index: number;
-  source: Record_;
   final_status: Status | null;
   events: TraceEvent[];
   previous_record_index: number | null;
   next_record_index: number | null;
+  // whether the records table lists this record under the filters asked with
+  listed: boolean;
 }
 
 export interface FieldStats {
@@ -163,8 +166,11 @@ export const api = {
     position: number,
     params: { status?: Status; q?: string; limit?: number; cursor?: string } = {},
   ) => get<Page<RecordEvent>>(`/runs/${runId}/stages/${position}/records`, params),
-  trace: (runId: number, recordIndex: number, params: { status?: Status } = {}) =>
-    get<Trace>(`/runs/${runId}/records/${recordIndex}`, params),
+  trace: (
+    runId: number,
+    recordIndex: number,
+    params: { stage?: number; status?: Status; q?: string } = {},
+  ) => get<Trace>(`/runs/${runId}/records/${recordIndex}`, params),
   fields: (runId: number, position: number) =>
     get<{ records_considered: number; items: FieldStats[] }>(
       `/runs/${runId}/stages/${position}/fields`,

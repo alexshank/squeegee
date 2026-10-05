@@ -207,18 +207,18 @@ test("a trace still loading never appears under the newly chosen record", async 
     records: () => ok({ items: [event(7), event(8)], next_cursor: null, has_more: false }),
   });
   const view = renderRun("stage=0&record=7");
-  await waitFor(() => expect(screen.getByText("in-7")).toBeDefined());
+  await waitFor(() => expect(screen.getAllByText(/in-7/).length).toBeGreaterThan(0));
 
   view.rerender(<RunView runId={1} params={new URLSearchParams("stage=0&record=8")} />);
 
   // useApi keeps record 7's trace in hand while record 8's request is open
-  expect(screen.getByText("record 8 at this stage")).toBeDefined();
-  expect(screen.queryByText("in-7")).toBeNull();
+  expect(screen.getByText("record 8 at stage 0")).toBeDefined();
+  expect(screen.queryAllByText(/in-7/)).toEqual([]);
   expect(screen.queryByText("record 7")).toBeNull();
 
   second.resolve({ ok: true, json: () => Promise.resolve(trace(8)) } as Response);
 
-  await waitFor(() => expect(screen.getByText("in-8")).toBeDefined());
+  await waitFor(() => expect(screen.getAllByText(/in-8/).length).toBeGreaterThan(0));
   expect(screen.getByText("record 8")).toBeDefined();
 });
 
@@ -255,7 +255,7 @@ test("typing in the search box asks once, and leaves one history entry", async (
   await vi.advanceTimersByTimeAsync(0);
   const historyBefore = window.history.length;
 
-  const box = screen.getByPlaceholderText("search stored JSON");
+  const box = screen.getByPlaceholderText("search inputs and outputs");
   for (const value of ["n", "n/", "n/a"]) {
     fireEvent.change(box, { target: { value } });
     await vi.advanceTimersByTimeAsync(50);
@@ -281,49 +281,121 @@ test("nonsense parameters are ignored rather than requested", async () => {
   expect(requested.some((url) => url.includes("/stages/0"))).toBe(true);
 });
 
-test("the record filter and the stepping filter are separate parameters", async () => {
-  const requested = stubApi({
-    records: () => ok({ items: [event(4, "error")], next_cursor: null, has_more: false }),
-    trace: () =>
-      ok({
-        record_index: 4,
-        source: { id: "4" },
-        final_status: "dropped",
-        previous_record_index: 2,
-        next_record_index: null,
-        events: [],
-      }),
-  });
-  renderRun("stage=0&status=error&step=dropped&record=4");
+test("stepping walks the records table, so the trace carries the table's filters", async () => {
+  const requested = stubApi({ trace: () => ok(trace(4)) });
+  renderRun("stage=0&status=error&q=n%2Fa&record=4");
 
   await waitFor(() => expect(screen.getByText("record 4")).toBeDefined());
 
-  const records = requested.find((url) => url.includes("/records?"));
-  const trace = requested.find((url) => /\/records\/4/.test(url));
-  expect(records).toContain("status=error");
-  expect(trace).toContain("status=dropped");
+  const traced = requested.find((url) => /\/records\/4/.test(url));
+  expect(traced).toContain("stage=0");
+  expect(traced).toContain("status=error");
+  expect(traced).toContain("q=n%2Fa");
 });
 
-test("choosing what to step through writes only the step parameter", async () => {
-  stubApi({
-    trace: () =>
+// a two row table that both stubbed endpoints filter the way the server does
+const TABLE = [
+  { index: 1, status: "ok", text: "apple" },
+  { index: 2, status: "dropped", text: "banana" },
+];
+
+function rowsFor(url: string) {
+  const query = new URL(url, "http://squeegee").searchParams;
+  return TABLE.filter(
+    (row) =>
+      (!query.get("status") || row.status === query.get("status")) &&
+      (!query.get("q") || row.text.includes(query.get("q") ?? "")),
+  );
+}
+
+function stubTable(slowTrace: (url: string) => Promise<Response> | null = () => null) {
+  const requested = stubApi({
+    records: (url) =>
       ok({
-        record_index: 1,
-        source: { id: "1" },
-        final_status: "ok",
-        previous_record_index: null,
-        next_record_index: null,
-        events: [],
+        items: rowsFor(url).map((row) => event(row.index, row.status)),
+        next_cursor: null,
+        has_more: false,
       }),
+    trace: (url) => {
+      const index = Number(/records\/(\d+)/.exec(url)?.[1]);
+      return (
+        slowTrace(url) ??
+        ok({ ...trace(index), listed: rowsFor(url).some((row) => row.index === index) })
+      );
+    },
   });
-  renderRun("stage=0&status=error&record=1");
+  window.history.pushState({}, "", "/runs/1?stage=0&record=1");
+  render(<App />);
+  return requested;
+}
 
-  fireEvent.change(await screen.findByDisplayValue("every record"), {
-    target: { value: "dropped" },
+// let every settled request's then() run, so the assertion follows the answer
+const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
+
+test("a filter that still lists the chosen record keeps it", async () => {
+  const requested = stubTable();
+  await waitFor(() => expect(screen.getByText("record 1")).toBeDefined());
+
+  fireEvent.click(screen.getByRole("button", { name: "ok" }));
+
+  // refilter asks for one row of the filtered table once it has the answer in hand
+  await waitFor(() => expect(requested.some((url) => url.includes("limit=1"))).toBe(true));
+  await settle();
+  expect(window.location.search).toContain("status=ok");
+  expect(window.location.search).toContain("record=1");
+});
+
+test("an answer for a filter already replaced is ignored", async () => {
+  const slow = deferred<Response>();
+  stubTable((url) => (url.includes("status=dropped") ? slow.promise : null));
+  await waitFor(() => expect(screen.getByText("record 1")).toBeDefined());
+
+  fireEvent.click(screen.getByRole("button", { name: "dropped" }));
+  fireEvent.click(screen.getByRole("button", { name: "all" }));
+  await settle();
+  // had it been heeded, this answer would move the selection to record 2
+  slow.resolve({
+    ok: true,
+    json: () => Promise.resolve({ ...trace(1), listed: false }),
+  } as Response);
+  await settle();
+
+  expect(window.location.search).toContain("record=1");
+  expect(window.location.search).not.toContain("status=");
+});
+
+test("a filter that hides the chosen record moves to its first record", async () => {
+  stubTable();
+  await waitFor(() => expect(screen.getByText("record 1")).toBeDefined());
+
+  fireEvent.click(screen.getByRole("button", { name: "dropped" }));
+
+  await waitFor(() => expect(window.location.search).toContain("record=2"));
+  expect(window.location.search).toContain("status=dropped");
+});
+
+test("a filter that lists nothing returns the trace to its placeholder", async () => {
+  stubTable();
+  await waitFor(() => expect(screen.getByText("record 1")).toBeDefined());
+
+  fireEvent.click(screen.getByRole("button", { name: "error" }));
+
+  await waitFor(() =>
+    expect(screen.getByText("pick a record to trace it through the pipeline")).toBeDefined(),
+  );
+  expect(window.location.search).not.toContain("record=");
+});
+
+test("a search that hides the chosen record moves to its first match", async () => {
+  stubTable();
+  await waitFor(() => expect(screen.getByText("record 1")).toBeDefined());
+
+  fireEvent.change(screen.getByPlaceholderText("search inputs and outputs"), {
+    target: { value: "banana" },
   });
 
-  await waitFor(() => expect(window.location.search).toContain("step=dropped"));
-  expect(window.location.search).toContain("status=error");
+  await waitFor(() => expect(window.location.search).toContain("record=2"));
+  expect(window.location.search).toContain("q=banana");
 });
 
 test("top values of mixed types do not collide as React keys", async () => {

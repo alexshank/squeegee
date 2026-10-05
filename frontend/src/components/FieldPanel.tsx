@@ -1,14 +1,15 @@
+import { Fragment } from "react";
 import type { Distribution, FieldDetail } from "../api";
 
-/** Field analytics: the distribution after the stage, and before it where it existed. */
+/** Field analytics: the distribution before the stage, where it existed, and after it. */
 export function FieldPanel({ detail }: { detail: FieldDetail }) {
   return (
-    <section style={{ borderTop: "1px solid var(--border)", padding: "0.5rem 0" }}>
+    <section style={{ borderTop: "1px solid var(--border)", padding: "0.5rem 0.75rem" }}>
       <h3 style={{ margin: "0 0 0.4rem", fontSize: "0.85rem", fontFamily: "var(--mono)" }}>
         {detail.field} <span style={{ color: "var(--muted)" }}>· {detail.inferred_type}</span>
       </h3>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-        <Side title="after this stage" distribution={detail.after} />
+        {/* before on the left, so the panel reads in the same direction as the data flows */}
         {detail.before ? (
           <Side title="before this stage" distribution={detail.before} />
         ) : (
@@ -16,6 +17,7 @@ export function FieldPanel({ detail }: { detail: FieldDetail }) {
             This stage created the field; there is nothing to compare against.
           </p>
         )}
+        <Side title="after this stage" distribution={detail.after} />
       </div>
     </section>
   );
@@ -47,18 +49,32 @@ function Side({ title, distribution }: { title: string; distribution: Distributi
         {stats.min !== null && <Figure name="min" value={round(stats.min)} />}
         {stats.max !== null && <Figure name="max" value={round(stats.max)} />}
       </dl>
-      {top_values && (
-        <ul style={{ listStyle: "none", margin: "0.4rem 0 0", padding: 0, fontSize: "0.75rem" }}>
-          {top_values.slice(0, 5).map((entry) => (
-            // SQLite groups 1 and "1" separately, so the type belongs in the key
-            <li
-              key={`${typeof entry.value}:${String(entry.value)}`}
-              style={{ fontFamily: "var(--mono)" }}
-            >
-              {String(entry.value)} <span style={{ color: "var(--muted)" }}>× {entry.count}</span>
-            </li>
-          ))}
-        </ul>
+      {top_values && top_values.length > 0 && (
+        <>
+          <div style={{ marginTop: "0.5rem", fontSize: "0.7rem", color: "var(--muted)" }}>
+            {`Top ${Math.min(top_values.length, 5)} Most Frequent`}
+          </div>
+          <dl
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr auto",
+              gap: "0 0.75rem",
+              margin: "0.2rem 0 0",
+              fontSize: "0.75rem",
+              fontFamily: "var(--mono)",
+            }}
+          >
+            {top_values.slice(0, 5).map((entry) => (
+              // SQLite groups 1 and "1" separately, so the type belongs in the key
+              <Fragment key={`${typeof entry.value}:${String(entry.value)}`}>
+                <dt style={{ overflowWrap: "anywhere" }}>{String(entry.value)}</dt>
+                <dd style={{ margin: 0, color: "var(--muted)", textAlign: "right" }}>
+                  × {entry.count}
+                </dd>
+              </Fragment>
+            ))}
+          </dl>
+        </>
       )}
     </div>
   );

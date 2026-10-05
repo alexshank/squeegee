@@ -13,12 +13,12 @@ from typing import Any
 Record = dict[str, Any]
 
 
-def read(path: Path) -> Iterator[Record]:
-    """Yield one record per blank-line separated block."""
+def read_text(path: Path) -> Iterator[tuple[str, Record]]:
+    """One record per blank-line separated block of text."""
     return _blocks(path, lambda line: not line.strip(), keep_the_boundary=False)
 
 
-def blocks_starting_with(pattern: str) -> Callable[[Path], Iterator[Record]]:
+def blocks_starting_with(pattern: str) -> Callable[[Path], Iterator[tuple[str, Record]]]:
     """Return a reader that starts a new record at every line matching ``pattern``.
 
     Blank lines belong to the block they fall inside, so an entry running over
@@ -26,12 +26,17 @@ def blocks_starting_with(pattern: str) -> Callable[[Path], Iterator[Record]]:
     as its own record rather than dropped, so nothing leaves the file unseen.
     """
     start = re.compile(pattern)
-    return lambda path: _blocks(path, lambda line: start.match(line) is not None)
+
+    def read_blocks(path: Path) -> Iterator[tuple[str, Record]]:
+        """One record per block of text starting at a line that matches the pattern."""
+        return _blocks(path, lambda line: start.match(line) is not None)
+
+    return read_blocks
 
 
 def _blocks(
     path: Path, is_a_boundary: Callable[[str], bool], keep_the_boundary: bool = True
-) -> Iterator[Record]:
+) -> Iterator[tuple[str, Record]]:
     line_number = 1
     held: list[str] = []
     for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
@@ -45,7 +50,7 @@ def _blocks(
     yield from _record(line_number, held)
 
 
-def _record(line_number: int, held: list[str]) -> Iterator[Record]:
+def _record(line_number: int, held: list[str]) -> Iterator[tuple[str, Record]]:
     text = "\n".join(held).strip()
     if text:
-        yield {"line_number": line_number, "text": text}
+        yield text, {"line_number": line_number, "text": text}

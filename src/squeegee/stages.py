@@ -30,6 +30,10 @@ class Stage:
     source_sha256: str
     input_type: str | None
     output_type: str | None
+    # "source" for the reader that breaks the input into records, "map" otherwise
+    kind: str = "map"
+    # how the UI highlights this stage's inputs; None means it infers
+    input_format: str | None = None
 
 
 _registry: list[Stage] = []
@@ -100,6 +104,22 @@ def stage(
         return target
 
     return register if func is None else register(func)
+
+
+def source_stage(reader: Callable[[Any], Any], input_format: str | None) -> Stage:
+    """Describe the reader a run uses as its stage zero."""
+    source = _source_of(reader)
+    return Stage(
+        name=reader.__name__,
+        description=_first_docstring_line(reader),
+        func=reader,
+        source_text=source,
+        source_sha256=sha256(source.encode()).hexdigest(),
+        input_type=None,
+        output_type=None,
+        kind="source",
+        input_format=input_format,
+    )
 
 
 def _reject_unusable(func: Callable[..., Any]) -> None:

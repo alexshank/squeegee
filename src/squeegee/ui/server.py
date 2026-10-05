@@ -88,7 +88,9 @@ def _record(database: Path, match: re.Match[str], params: Params) -> dict[str, A
         database,
         int(match["run_id"]),
         int(match["record_index"]),
+        position=_integer(params, "stage", default=0),
         status=_text(params, "status"),
+        search=_text(params, "q"),
     )
 
 

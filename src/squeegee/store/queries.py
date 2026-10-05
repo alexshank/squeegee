@@ -15,6 +15,7 @@ from typing import Any
 
 from squeegee import __version__
 from squeegee.errors import SqueegeeError
+from squeegee.store.sqlite import check_schema_version
 
 # the only value ever interpolated into a statement below is `column`, which is
 # always one of two literals chosen in this module, never anything from a request
@@ -22,15 +23,6 @@ MAX_PAGE = 500
 DEFAULT_PAGE = 50
 
 Row = dict[str, Any]
-
-_FINAL_STATUS = """
-WITH final AS (
-    SELECT r.id AS record_id, r.record_index,
-           (SELECT e.status FROM record_events e
-             WHERE e.record_id = r.id ORDER BY e.id DESC LIMIT 1) AS status
-    FROM records r WHERE r.run_id = :run_id
-)
-"""
 
 
 def meta(database_path: Path) -> Row:
@@ -104,8 +96,8 @@ def stage_detail(database_path: Path, run_id: int, position: int) -> Row:
     with _read_only(database_path) as connection:
         stage = connection.execute(
             "SELECT rs.id AS run_stage_id, rs.position, sv.id AS stage_version_id, sv.name, "
-            "sv.description, sv.input_type, sv.output_type, sv.source_text, sv.source_sha256, "
-            "sv.first_seen_at "
+            "sv.description, sv.input_type, sv.output_type, "
+            "sv.source_text, sv.source_sha256, sv.first_seen_at "
             "FROM run_stages rs JOIN stage_versions sv ON sv.id = rs.stage_version_id "
             "WHERE rs.run_id = ? AND rs.position = ?",
             (run_id, position),
@@ -161,9 +153,19 @@ def stage_records(
 
 
 def record_trace(
-    database_path: Path, run_id: int, record_index: int, status: str | None = None
+    database_path: Path,
+    run_id: int,
+    record_index: int,
+    position: int = 0,
+    status: str | None = None,
+    search: str | None = None,
 ) -> Row:
-    """One record's whole journey, plus where to step next."""
+    """One record's whole journey, plus where to step next.
+
+    Stepping walks the same list as ``stage_records`` with the same filters,
+    so the next record is always the next row of the records table. Every
+    record has a stage zero event, so the default walks every record.
+    """
     _check_status(status)
     with _read_only(database_path) as connection:
         record = connection.execute(
@@ -174,7 +176,8 @@ def record_trace(
         events = [
             _trace_event(event)
             for event in connection.execute(
-                "SELECT rs.position, sv.name AS stage_name, e.status, e.input_json, "
+                "SELECT rs.position, sv.name AS stage_name, sv.input_format, e.status, "
+                "e.input_json, "
                 "e.output_json, e.error_type, e.error_message, e.duration_us "
                 "FROM record_events e "
                 "JOIN run_stages rs ON rs.id = e.run_stage_id "
@@ -183,7 +186,9 @@ def record_trace(
                 (record["id"],),
             )
         ]
-        neighbours = _neighbours(connection, run_id, record_index, status)
+        neighbours = _neighbours(
+            connection, _run_stage_id(connection, run_id, position), record_index, status, search
+        )
         return {
             "record_index": record_index,
             "source": json.loads(record["source_json"]),
@@ -337,7 +342,9 @@ def _fields_of(connection: sqlite3.Connection, run_stage_id: int) -> list[str]:
         for row in connection.execute(
             "SELECT DISTINCT each.key FROM record_events, "
             "json_each(record_events.output_json) each "
-            "WHERE run_stage_id = ? AND status = 'ok' ORDER BY each.key",
+            # a stage may return text, and the elements of a JSON array have no key
+            "WHERE run_stage_id = ? AND status = 'ok' AND json_type(output_json) = 'object' "
+            "ORDER BY each.key",
             (run_stage_id,),
         )
     ]
@@ -423,7 +430,8 @@ def _inferred_type(type_count: int, a_type: str | None) -> str:
 def _stage_rows(connection: sqlite3.Connection, run_id: int) -> list[Row]:
     stages = connection.execute(
         "SELECT rs.id AS run_stage_id, rs.position, sv.id AS stage_version_id, sv.name, "
-        "sv.description FROM run_stages rs JOIN stage_versions sv ON sv.id = rs.stage_version_id "
+        "sv.description "
+        "FROM run_stages rs JOIN stage_versions sv ON sv.id = rs.stage_version_id "
         "WHERE rs.run_id = ? ORDER BY rs.position",
         (run_id,),
     ).fetchall()
@@ -483,20 +491,40 @@ def _failure(connection: sqlite3.Connection, run_id: int) -> Row | None:
 
 
 def _neighbours(
-    connection: sqlite3.Connection, run_id: int, record_index: int, status: str | None
+    connection: sqlite3.Connection,
+    run_stage_id: int,
+    record_index: int,
+    status: str | None,
+    search: str | None,
 ) -> Row:
-    parameters = {"run_id": run_id, "record_index": record_index, "status": status}
+    matching = (
+        "FROM record_events e JOIN records r ON r.id = e.record_id "
+        "WHERE e.run_stage_id = :run_stage_id "
+        "AND (:status IS NULL OR e.status = :status) "
+        "AND (:search IS NULL OR e.input_json LIKE '%' || :search || '%' "
+        "     OR e.output_json LIKE '%' || :search || '%') "
+    )
+    parameters = {
+        "run_stage_id": run_stage_id,
+        "record_index": record_index,
+        "status": status,
+        "search": search,
+    }
     previous = connection.execute(
-        _FINAL_STATUS + "SELECT MAX(record_index) FROM final "
-        "WHERE record_index < :record_index AND (:status IS NULL OR status = :status)",
-        parameters,
+        f"SELECT MAX(r.record_index) {matching} AND r.record_index < :record_index", parameters
     ).fetchone()[0]
     following = connection.execute(
-        _FINAL_STATUS + "SELECT MIN(record_index) FROM final "
-        "WHERE record_index > :record_index AND (:status IS NULL OR status = :status)",
-        parameters,
+        f"SELECT MIN(r.record_index) {matching} AND r.record_index > :record_index", parameters
     ).fetchone()[0]
-    return {"previous_record_index": previous, "next_record_index": following}
+    # whether the table lists this record at all, so a filter change can move off it
+    present = connection.execute(
+        f"SELECT COUNT(*) {matching} AND r.record_index = :record_index", parameters
+    ).fetchone()[0]
+    return {
+        "previous_record_index": previous,
+        "next_record_index": following,
+        "listed": present > 0,
+    }
 
 
 def _event_row(event: sqlite3.Row) -> Row:
@@ -517,6 +545,7 @@ def _trace_event(event: sqlite3.Row) -> Row:
     return {
         "position": event["position"],
         "stage_name": event["stage_name"],
+        "input_format": event["input_format"],
         "status": event["status"],
         "input": stage_input,
         "output": stage_output,
@@ -618,4 +647,9 @@ def _read_only(database_path: Path) -> sqlite3.Connection:
         raise SqueegeeError(f"no squeegee database at {database_path}")
     connection = sqlite3.connect(f"file:{database_path}?mode=ro", uri=True)
     connection.row_factory = sqlite3.Row
+    try:
+        check_schema_version(connection, database_path)
+    except SqueegeeError:
+        connection.close()
+        raise
     return connection

@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS stage_versions (
     description   TEXT,
     input_type    TEXT,
     output_type   TEXT,
+    kind          TEXT NOT NULL CHECK (kind IN ('source', 'map')),
+    input_format  TEXT,
     first_seen_at TEXT NOT NULL,
     UNIQUE (name, source_sha256)
 );

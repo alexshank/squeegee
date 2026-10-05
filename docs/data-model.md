@@ -4,7 +4,7 @@
 
 1. **Append-only.** Every write is an `INSERT`. Nothing is ever updated or deleted, including by mistake, including by a future version of Squeegee. This is enforced by SQLite triggers, not by convention.
 2. **Self-contained.** The database stores the source text of each stage, so a run can be reviewed without the original script.
-3. **Local.** One SQLite file, by default `.squeegee/squeegee.db` relative to the script being run.
+3. **Local.** One SQLite file, by default `/tmp/squeegee.db`. The schema version is `PRAGMA user_version`; a database from another version is refused, not migrated.
 4. **Readable during writes.** WAL mode, so the UI can read while a run is in progress.
 5. **Durable enough.** `synchronous=NORMAL`, the usual companion to WAL, so a commit does not wait on fsync. The exposure is losing the most recent commits to a power cut, never to a crash of Squeegee itself, and this is a debugging record rather than a ledger. With `FULL` a ten thousand record run takes roughly three times as long.
 
@@ -49,6 +49,8 @@ erDiagram
         text    description
         text    input_type "null when unannotated"
         text    output_type "null when unannotated"
+        text    kind "source | map"
+        text    input_format "csv | json | null"
         text    first_seen_at
     }
     run_stages {
@@ -122,6 +124,8 @@ CREATE TABLE stage_versions (
     description   TEXT,
     input_type    TEXT,                          -- annotation as text, NULL when the user did not annotate
     output_type   TEXT,
+    kind          TEXT NOT NULL CHECK (kind IN ('source', 'map')),  -- source is the reader, stage zero
+    input_format  TEXT,                          -- how the UI highlights raw inputs; NULL means infer
     first_seen_at TEXT NOT NULL,
     UNIQUE (name, source_sha256)
 );

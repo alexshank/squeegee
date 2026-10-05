@@ -16,6 +16,7 @@ from types import TracebackType
 from typing import Any, Self
 
 from squeegee import __version__
+from squeegee.errors import SqueegeeError
 from squeegee.stages import Stage
 
 TABLES = (
@@ -33,6 +34,10 @@ BATCH_SIZE = 1_000
 
 _SCHEMA = Path(__file__).with_name("schema.sql")
 
+# bumped whenever schema.sql changes shape; history is append-only, so an older
+# database is refused rather than migrated
+SCHEMA_VERSION = 1
+
 
 class Store:
     """Write side of the run history."""
@@ -42,6 +47,12 @@ class Store:
         path.parent.mkdir(parents=True, exist_ok=True)
         self.path = path
         self._connection = sqlite3.connect(path)
+        # checked before anything writes, so a refused database is left as it was
+        try:
+            check_schema_version(self._connection, path)
+        except SqueegeeError:
+            self._connection.close()
+            raise
         self._connection.execute("PRAGMA journal_mode=WAL")
         self._connection.execute("PRAGMA foreign_keys=ON")
         # NORMAL is the usual companion to WAL: a commit no longer waits on fsync,
@@ -49,6 +60,7 @@ class Store:
         # The exposure is losing the most recent commits to a power cut, never to a
         # crash of squeegee itself, and this is a debugging record, not a ledger.
         self._connection.execute("PRAGMA synchronous=NORMAL")
+        self._connection.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
         self._connection.executescript(_SCHEMA.read_text(encoding="utf-8"))
         self._connection.executescript(_append_only_triggers())
         self._connection.commit()
@@ -113,7 +125,7 @@ class Store:
         self._connection.execute(
             "INSERT OR IGNORE INTO stage_versions "
             "(name, source_sha256, source_text, description, input_type, output_type, "
-            "first_seen_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "kind, input_format, first_seen_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 stage.name,
                 stage.source_sha256,
@@ -121,6 +133,8 @@ class Store:
                 stage.description,
                 stage.input_type,
                 stage.output_type,
+                stage.kind,
+                stage.input_format,
                 _now(),
             ),
         )
@@ -206,6 +220,21 @@ class Store:
         self._closed = True
 
 
+def check_schema_version(connection: sqlite3.Connection, path: Path) -> None:
+    """Refuse a database written by a squeegee with a different schema.
+
+    Raises:
+        SqueegeeError: The database holds runs in another schema.
+    """
+    version = connection.execute("PRAGMA user_version").fetchone()[0]
+    empty = connection.execute("SELECT COUNT(*) FROM sqlite_master").fetchone()[0] == 0
+    if not empty and version != SCHEMA_VERSION:
+        raise SqueegeeError(
+            f"{path} was written by another version of squeegee (schema {version}, "
+            f"expected {SCHEMA_VERSION}); pass a different --db"
+        )
+
+
 def to_json(value: Any) -> str:
     """Serialize a record value, keeping observability over fidelity.
 
@@ -213,7 +242,9 @@ def to_json(value: Any) -> str:
     object, because losing the event entirely is worse than losing the exact
     value.
     """
-    return json.dumps(value, default=_marker)
+    # characters stay as written rather than as \u escapes, because search is a
+    # substring match on this text and nobody types "\u201c" to find a quote
+    return json.dumps(value, default=_marker, ensure_ascii=False)
 
 
 def _marker(value: Any) -> dict[str, str]:

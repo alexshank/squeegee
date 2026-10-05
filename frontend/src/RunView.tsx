@@ -1,10 +1,12 @@
 import { AlertTriangle } from "lucide-react";
-import { useRef } from "react";
-import { api } from "./api";
+import { useRef, useState } from "react";
+import { type Status, api } from "./api";
+import { Counts } from "./components/Counts";
 import { FieldPanel } from "./components/FieldPanel";
 import { RecordIoPane } from "./components/RecordIoPane";
 import { RecordsPane } from "./components/RecordsPane";
 import { SourceModal } from "./components/SourceModal";
+import { Splitter } from "./components/Splitter";
 import { StagesPane } from "./components/StagesPane";
 import { TracePane } from "./components/TracePane";
 import { integerParam, statusParam } from "./params";
@@ -34,10 +36,7 @@ function Problems({ problems }: { problems: (string | null)[] }) {
 export function RunView({ runId, params }: Props) {
   const setParams = useParamSetter();
   const position = integerParam(params, "stage") ?? 0;
-  // the record table filters on what a stage did to a record; stepping through
-  // the trace filters on where a record ended up. Two questions, two parameters.
   const status = statusParam(params, "status");
-  const step = statusParam(params, "step");
   const search = params.get("q") ?? "";
   const field = params.get("field");
   const recordIndex = integerParam(params, "record");
@@ -50,8 +49,13 @@ export function RunView({ runId, params }: Props) {
     () =>
       recordIndex === null
         ? Promise.resolve(null)
-        : api.trace(runId, recordIndex, step ? { status: step } : {}),
-    [runId, recordIndex, step],
+        : // stepping walks the records table, so it carries the table's filters
+          api.trace(runId, recordIndex, {
+            stage: position,
+            status: status ?? undefined,
+            q: search || undefined,
+          }),
+    [runId, recordIndex, position, status, search],
   );
   const fieldDetail = useApi(
     () => (field === null ? Promise.resolve(null) : api.field(runId, position, field)),
@@ -65,10 +69,39 @@ export function RunView({ runId, params }: Props) {
   // closing walks the history back when opening pushed onto it, so a shared
   // link that arrives with the modal open does not gain an entry to walk
   const pushedSource = useRef(false);
+  const [left, setLeft] = useState(300);
+  const [right, setRight] = useState(420);
+  const [bottom, setBottom] = useState(320);
+  // no pane may be dragged shut, or its handle would be lost with it
+  const clamp = (size: number) => Math.max(120, size);
 
   function openSource(next: number) {
     pushedSource.current = true;
     setParams({ source: String(next) });
+  }
+
+  // the filter applies at once; the record follows once the server says whether
+  // the filtered table still lists it, so typing is never held up by a request.
+  // the trace asked for here is the one useApi is also loading; sharing it would
+  // mean an effect that also fires on deep links and stage changes, where
+  // "never reached this stage" is the right answer rather than a jump
+  async function refilter(nextStatus: Status | null, nextSearch: string, replace: boolean) {
+    setParams({ status: nextStatus, q: nextSearch || null }, replace);
+    if (recordIndex === null) return;
+    const asked = window.location.search;
+    const filters = { status: nextStatus ?? undefined, q: nextSearch || undefined };
+    try {
+      const [mine, first] = await Promise.all([
+        api.trace(runId, recordIndex, { stage: position, ...filters }),
+        api.stageRecords(runId, position, { ...filters, limit: 1 }),
+      ]);
+      // any newer filter, record or stage changes the URL and makes this answer stale
+      if (window.location.search !== asked || mine.listed) return;
+      const index = first.items[0]?.record_index;
+      setParams({ record: index === undefined ? null : String(index) }, true);
+    } catch {
+      // the table and the trace each report their own load failure
+    }
   }
 
   function closeSource() {
@@ -90,9 +123,19 @@ export function RunView({ runId, params }: Props) {
             run {runId} · {run.data?.script_path.split("/").pop() ?? "…"}
           </strong>
           <span style={{ color: "var(--muted)", fontSize: "0.8rem" }}>
-            {run.data
-              ? `${run.data.records_in} in · ${run.data.records_out} out · ${run.data.records_dropped} dropped · ${run.data.records_errored} errored`
-              : "loading"}
+            {run.data ? (
+              <>
+                {`${run.data.records_in} in · `}
+                <Counts
+                  ok={run.data.records_out}
+                  dropped={run.data.records_dropped}
+                  errored={run.data.records_errored}
+                  okLabel="out"
+                />
+              </>
+            ) : (
+              "loading"
+            )}
           </span>
         </div>
         {failure && (
@@ -137,8 +180,8 @@ export function RunView({ runId, params }: Props) {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "14rem minmax(0, 1fr) 22rem",
-          height: "calc(100vh - 7rem)",
+          gridTemplateColumns: `${left}px auto minmax(0, 1fr) auto ${right}px`,
+          height: "calc(100vh - 5.5rem)",
         }}
       >
         <StagesPane
@@ -150,35 +193,40 @@ export function RunView({ runId, params }: Props) {
           onField={(next) => setParams({ field: next })}
           onSource={(next) => openSource(next)}
         />
-        <div style={{ display: "flex", flexDirection: "column", minWidth: 0, overflowY: "auto" }}>
-          <RecordsPane
-            records={records.items}
-            hasMore={records.hasMore}
-            loading={records.loading}
-            error={records.error}
-            status={status}
-            search={search}
-            recordIndex={recordIndex}
-            onStatus={(next) => setParams({ status: next })}
-            onSearch={(next) => setParams({ q: next || null }, true)}
-            onRecord={(index) => setParams({ record: String(index) })}
-            onLoadMore={records.loadMore}
-          />
-          <RecordIoPane
-            trace={current}
-            error={trace.error}
-            position={position}
-            recordIndex={recordIndex}
-            onSource={(next) => openSource(next)}
-          />
-          {fieldDetail.data && <FieldPanel detail={fieldDetail.data} />}
+        <Splitter axis="x" onDrag={(delta) => setLeft((size) => clamp(size + delta))} />
+        <div style={{ display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
+          <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+            <RecordsPane
+              records={records.items}
+              hasMore={records.hasMore}
+              loading={records.loading}
+              error={records.error}
+              status={status}
+              search={search}
+              recordIndex={recordIndex}
+              onStatus={(next) => void refilter(next, search, false)}
+              onSearch={(next) => void refilter(status, next, true)}
+              onRecord={(index) => setParams({ record: String(index) })}
+              onLoadMore={records.loadMore}
+            />
+          </div>
+          <Splitter axis="y" onDrag={(delta) => setBottom((size) => clamp(size - delta))} />
+          <div style={{ height: bottom, flexShrink: 0, overflowY: "auto" }}>
+            <RecordIoPane
+              trace={current}
+              error={trace.error}
+              position={position}
+              recordIndex={recordIndex}
+              onSource={(next) => openSource(next)}
+            />
+            {fieldDetail.data && <FieldPanel detail={fieldDetail.data} />}
+          </div>
         </div>
+        <Splitter axis="x" onDrag={(delta) => setRight((size) => clamp(size - delta))} />
         <TracePane
           trace={current}
           loading={trace.loading}
           error={trace.error}
-          step={step}
-          onStep={(next) => setParams({ step: next })}
           onRecord={(index) => setParams({ record: String(index) })}
         />
       </div>

@@ -5,7 +5,9 @@ changes here, that document is wrong and needs the same edit.
 """
 
 import csv
+import io
 import json
+import urllib.request
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -55,11 +57,13 @@ def test_the_example_cleans_the_example_orders(tmp_path: Path) -> None:
         "1008",
         "1009",
     ]
+    # the last stage returns CSV text, and nested fields travel through it as JSON
     assert cleaned[1] == {
         "order_id": "1003",
-        "email": "grace@example.com",
         "placed_on": "2026-09-02",
+        "items": '[{"sku": "laptop", "quantity": 1}]',
         "amount_cents": "129900",
+        "customer": '{"email": "grace@example.com", "domain": "example.com"}',
     }
 
 
@@ -84,7 +88,7 @@ def test_the_bad_row_stops_the_run_and_writes_no_output(
     assert exit_code == EXIT_RUN_FAILED
     assert not output.exists()
     captured = capsys.readouterr()
-    assert "failed at stage 2 (parse_amount), record 8" in captured.err
+    assert "failed at stage 3 (parse_amount), record 8" in captured.err
     assert "could not convert string to float: 'n/a'" in captured.err
     assert "9 in, 4 reached the last stage, 4 dropped, 1 errored" in captured.out
 
@@ -116,7 +120,19 @@ def test_continuing_past_the_bad_row_finishes(tmp_path: Path) -> None:
     ]
 
 
-def test_the_example_cleans_the_2022_words_journal(tmp_path: Path) -> None:
+def test_the_example_cleans_the_2022_words_journal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    asked: list[dict[str, Any]] = []
+
+    # the classifier is a paid network call, so the test answers in its place
+    def fake_jev(request: urllib.request.Request, timeout: float) -> io.BytesIO:
+        asked.append(json.loads(request.data))  # type: ignore[arg-type]
+        answer = {"type": "choice", "choice": "tv", "confidence": 0.9}
+        return io.BytesIO(json.dumps({"answers": {"medium": answer}}).encode())
+
+    monkeypatch.setenv("TYPESAFE_API_KEY", "test-key")
+    monkeypatch.setattr(urllib.request, "urlopen", fake_jev)
     output = tmp_path / "words.json"
 
     exit_code = main(
@@ -134,8 +150,8 @@ def test_the_example_cleans_the_2022_words_journal(tmp_path: Path) -> None:
 
     assert exit_code == EXIT_OK
     entries = json.loads(output.read_text())
-    # 38 blocks in: the file's title is a record of its own, dropped by the first stage
-    assert len(entries) == 37
+    # 75 blocks in: the file's title is a record of its own, dropped by the first stage
+    assert len(entries) == 74
     assert entries[0]["date"] == "2022-01-01"
     assert entries[0]["quotes"][0]["source"] == "big lewbowski"
     # an entry whose quote runs across a blank line stays one record
@@ -143,14 +159,24 @@ def test_the_example_cleans_the_2022_words_journal(tmp_path: Path) -> None:
         {
             "text": "As you are, so I once was As I am, so you will be",
             "source": "St. Catherine\u2019s crypt. Memento mori",
+            "medium": "tv",
+            "medium_confidence": 0.9,
         }
     ]
     # the one day two quotes were written down
     assert _entry_for("2022-11-21", entries)["quote_count"] == 2
     # the days written down without quote marks are kept, not dropped
     assert _entry_for("2022-01-10", entries)["quotes"] == [
-        {"text": "THE DAWGS", "source": "crazy Georgia fan"}
+        {
+            "text": "THE DAWGS",
+            "source": "crazy Georgia fan",
+            "medium": "tv",
+            "medium_confidence": 0.9,
+        }
     ]
+    # one question per quote, and the two-quote day asks twice
+    assert len(asked) == 76
+    assert asked[0]["state"].endswith("- big lewbowski")
 
 
 def _entry_for(date: str, entries: list[dict[str, Any]]) -> dict[str, Any]:

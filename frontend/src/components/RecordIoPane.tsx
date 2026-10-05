@@ -1,6 +1,6 @@
 import type { Trace } from "../api";
-import { JsonValue } from "./JsonValue";
-import { Empty, PaneHeading } from "./StagesPane";
+import { RawValue } from "./RawValue";
+import { Empty, Label, PaneHeading } from "./shared";
 
 interface Props {
   trace: Trace | null;
@@ -17,18 +17,9 @@ export function RecordIoPane({ trace, error, position, recordIndex, onSource }: 
   const event = trace?.events.find((candidate) => candidate.position === position) ?? null;
 
   return (
-    <section
-      style={{
-        borderTop: "1px solid var(--border)",
-        // the records table is the one part of this column that may shrink, so
-        // a wide record cannot squeeze it away
-        flexShrink: 0,
-        maxHeight: "50%",
-        overflowY: "auto",
-      }}
-    >
+    <section>
       <PaneHeading>
-        {recordIndex === null ? "record" : `record ${recordIndex} at this stage`}
+        {recordIndex === null ? "record" : `record ${recordIndex} at stage ${position}`}
       </PaneHeading>
       {recordIndex === null && <Empty>pick a record to see its input and output</Empty>}
       {recordIndex !== null && error !== null && <Empty>this record could not be loaded</Empty>}
@@ -44,12 +35,15 @@ export function RecordIoPane({ trace, error, position, recordIndex, onSource }: 
           }}
         >
           <div style={{ minWidth: 0 }}>
-            <Label>input</Label>
-            <JsonValue value={event.input} />
+            <RawValue label="input" value={event.input} format={event.input_format} />
           </div>
           <div style={{ minWidth: 0 }}>
-            <Label>output</Label>
-            {event.status === "error" ? (
+            {event.status === "ok" && event.output ? (
+              <RawValue label="output" value={event.output} />
+            ) : (
+              <Label>output</Label>
+            )}
+            {event.status === "error" && (
               <p
                 className="status-error"
                 style={{ margin: 0, fontFamily: "var(--mono)", fontSize: "0.8rem" }}
@@ -70,9 +64,8 @@ export function RecordIoPane({ trace, error, position, recordIndex, onSource }: 
                   view source
                 </button>
               </p>
-            ) : event.output ? (
-              <JsonValue value={event.output} changed={event.changed_fields} />
-            ) : (
+            )}
+            {event.status === "dropped" && (
               <p className="status-dropped" style={{ margin: 0 }}>
                 dropped here
               </p>
@@ -81,20 +74,5 @@ export function RecordIoPane({ trace, error, position, recordIndex, onSource }: 
         </div>
       )}
     </section>
-  );
-}
-
-function Label({ children }: { children: string }) {
-  return (
-    <div
-      style={{
-        fontSize: "0.65rem",
-        textTransform: "uppercase",
-        letterSpacing: "0.06em",
-        color: "var(--muted)",
-      }}
-    >
-      {children}
-    </div>
   );
 }
