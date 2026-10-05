@@ -9,6 +9,9 @@ record at a time. Note that none of them are annotated: Squeegee never asks a
 user script for type hints.
 """
 
+import csv
+import io
+import json
 import re
 
 from squeegee import stage
@@ -58,3 +61,39 @@ def dedupe_by_id(record):
         return None
     _ids_already_seen.add(record["order_id"])
     return record
+
+
+@stage
+def parse_line_items(record):
+    """Split "widget x2; gadget x1" into a list of sku and quantity objects."""
+    record["items"] = [
+        {"sku": sku, "quantity": int(quantity)}
+        for sku, quantity in (item.strip().split(" x") for item in record["items"].split(";"))
+    ]
+    return record
+
+
+@stage
+def nest_the_customer(record):
+    """Group the customer's details into one nested object."""
+    email = record.pop("email")
+    record["customer"] = {"email": email, "domain": email.split("@")[1]}
+    return record
+
+
+@stage
+def to_csv_text(record):
+    """Render the record as CSV text, a header and one row, nested fields as JSON.
+
+    A stage may return text rather than a dictionary. The CSV writer reads this
+    text back into rows, so the output file is the same either way.
+    """
+    flat = {
+        key: json.dumps(value) if isinstance(value, dict | list) else value
+        for key, value in record.items()
+    }
+    text = io.StringIO()
+    writer = csv.DictWriter(text, fieldnames=list(flat), lineterminator="\n")
+    writer.writeheader()
+    writer.writerow(flat)
+    return text.getvalue().rstrip("\n")

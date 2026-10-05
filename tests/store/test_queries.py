@@ -75,18 +75,19 @@ def test_a_failed_run_reports_the_stage_and_record_that_stopped_it(database: Pat
 
     assert summary["status"] == "failed"
     assert summary["failure"] == {
-        "stage_position": 2,
+        "stage_position": 3,
         "stage_name": "parse_amount",
         "record_index": 8,
         "error_type": "ValueError",
         "error_message": "could not convert string to float: 'n/a'",
     }
     assert summary["options"]["continue_on_error"] is False
-    assert [stage["name"] for stage in summary["stages"]][:2] == [
-        "normalize_headers",
-        "drop_internal_test_orders",
+    assert [(stage["name"], stage["kind"]) for stage in summary["stages"]][:3] == [
+        ("read_csv", "source"),
+        ("normalize_headers", "map"),
+        ("drop_internal_test_orders", "map"),
     ]
-    assert summary["stages"][1]["records_dropped"] == 2
+    assert summary["stages"][2]["records_dropped"] == 2
 
 
 def test_a_finished_run_has_no_failure(database: Path) -> None:
@@ -99,7 +100,7 @@ def test_an_unknown_run_is_an_error(database: Path) -> None:
 
 
 def test_stage_detail_carries_the_source_that_ran(database: Path) -> None:
-    detail = queries.stage_detail(database, 2, 2)
+    detail = queries.stage_detail(database, 2, 3)
 
     assert detail["name"] == "parse_amount"
     assert "def parse_amount" in detail["source_text"]
@@ -116,7 +117,7 @@ def test_stage_detail_of_an_unknown_position_is_an_error(database: Path) -> None
 
 
 def test_stage_records_can_be_filtered_by_status(database: Path) -> None:
-    errors = queries.stage_records(database, 2, 2, status="error")
+    errors = queries.stage_records(database, 2, 3, status="error")
 
     assert [event["record_index"] for event in errors["items"]] == [8]
     assert errors["items"][0]["output"] is None
@@ -124,7 +125,7 @@ def test_stage_records_can_be_filtered_by_status(database: Path) -> None:
 
 
 def test_stage_records_can_be_searched(database: Path) -> None:
-    found = queries.stage_records(database, 1, 2, search="grace@example.com")
+    found = queries.stage_records(database, 1, 3, search="grace@example.com")
 
     assert [event["record_index"] for event in found["items"]] == [2, 5]
 
@@ -133,7 +134,7 @@ def test_stage_records_paginate(database: Path) -> None:
     seen: list[int] = []
     cursor: str | None = None
     while True:
-        page = queries.stage_records(database, 1, 0, limit=3, cursor=cursor)
+        page = queries.stage_records(database, 1, 1, limit=3, cursor=cursor)
         seen.extend(event["record_index"] for event in page["items"])
         if not page["has_more"]:
             break
@@ -144,32 +145,37 @@ def test_stage_records_paginate(database: Path) -> None:
 
 def test_an_unknown_status_is_rejected(database: Path) -> None:
     with pytest.raises(SqueegeeError, match="status must be ok, dropped, or error"):
-        queries.stage_records(database, 1, 0, status="broken")
+        queries.stage_records(database, 1, 1, status="broken")
 
 
 def test_a_trace_ends_where_the_record_failed(database: Path) -> None:
     trace = queries.record_trace(database, 2, 8)
 
     assert trace["final_status"] == "error"
-    assert [event["position"] for event in trace["events"]] == [0, 1, 2]
-    assert trace["events"][2]["error_message"].endswith("'n/a'")
+    assert [event["position"] for event in trace["events"]] == [0, 1, 2, 3]
+    assert trace["events"][3]["error_message"].endswith("'n/a'")
     assert trace["source"]["Order ID"] == "1008"
 
 
 def test_a_trace_marks_the_fields_a_stage_changed(database: Path) -> None:
     trace = queries.record_trace(database, 1, 0)
 
-    assert trace["events"][0]["changed_fields"] == [
+    assert trace["events"][1]["changed_fields"] == [
         "Amount",
         "Email",
+        "Items",
         "Order ID",
         "Placed On",
         "amount",
         "email",
+        "items",
         "order_id",
         "placed_on",
     ]
-    assert trace["events"][2]["changed_fields"] == ["amount", "amount_cents"]
+    assert trace["events"][3]["changed_fields"] == ["amount", "amount_cents"]
+    # the nested fields arrive as one changed key each
+    assert trace["events"][6]["changed_fields"] == ["items"]
+    assert trace["events"][7]["changed_fields"] == ["customer", "email"]
     assert trace["final_status"] == "ok"
 
 
@@ -179,11 +185,19 @@ def test_a_trace_steps_to_the_neighbouring_record(database: Path) -> None:
     assert (trace["previous_record_index"], trace["next_record_index"]) == (2, 4)
 
 
-def test_stepping_can_be_restricted_to_one_status(database: Path) -> None:
-    # records 1 and 6 are the internal test accounts, dropped at stage 1
-    trace = queries.record_trace(database, 1, 3, status="dropped")
+def test_stepping_walks_the_records_table_of_one_stage(database: Path) -> None:
+    # records 1 and 7 are the internal test accounts, dropped at stage 2
+    trace = queries.record_trace(database, 1, 3, stage=2, status="dropped")
 
-    assert (trace["previous_record_index"], trace["next_record_index"]) == (1, 5)
+    assert (trace["previous_record_index"], trace["next_record_index"]) == (1, 7)
+
+
+def test_stepping_honours_the_records_table_search(database: Path) -> None:
+    trace = queries.record_trace(database, 1, 0, stage=2, search="internal.test")
+
+    assert (trace["previous_record_index"], trace["next_record_index"]) == (None, 1)
+    assert trace["listed"] is False
+    assert queries.record_trace(database, 1, 1, stage=2, search="internal.test")["listed"] is True
 
 
 def test_an_unknown_record_is_an_error(database: Path) -> None:
@@ -192,10 +206,10 @@ def test_an_unknown_record_is_an_error(database: Path) -> None:
 
 
 def test_field_statistics_match_the_values_themselves(database: Path) -> None:
-    fields = queries.stage_fields(database, 1, 2)
+    fields = queries.stage_fields(database, 1, 3)
     amounts = [
         event["output"]["amount_cents"]
-        for event in queries.stage_records(database, 1, 2, status="ok")["items"]
+        for event in queries.stage_records(database, 1, 3, status="ok")["items"]
     ]
     cents = next(field for field in fields["items"] if field["field"] == "amount_cents")
 
@@ -210,7 +224,7 @@ def test_field_statistics_match_the_values_themselves(database: Path) -> None:
 
 
 def test_a_text_field_has_no_numeric_statistics(database: Path) -> None:
-    fields = queries.stage_fields(database, 1, 2)
+    fields = queries.stage_fields(database, 1, 3)
     email = next(field for field in fields["items"] if field["field"] == "email")
 
     assert email["inferred_type"] == "string"
@@ -219,7 +233,7 @@ def test_a_text_field_has_no_numeric_statistics(database: Path) -> None:
 
 
 def test_a_numeric_field_gets_a_histogram_and_its_before(database: Path) -> None:
-    detail = queries.field_detail(database, 1, 2, "amount_cents", bins=5)
+    detail = queries.field_detail(database, 1, 3, "amount_cents", bins=5)
 
     assert detail["inferred_type"] == "number"
     assert len(detail["after"]["histogram"]) == 5
@@ -230,7 +244,7 @@ def test_a_numeric_field_gets_a_histogram_and_its_before(database: Path) -> None
 
 
 def test_a_text_field_gets_top_values_before_and_after(database: Path) -> None:
-    detail = queries.field_detail(database, 1, 4, "email", top=3)
+    detail = queries.field_detail(database, 1, 5, "email", top=3)
 
     assert detail["after"]["histogram"] is None
     assert detail["after"]["top_values"][0]["count"] == 1
@@ -247,14 +261,14 @@ def test_a_text_field_gets_top_values_before_and_after(database: Path) -> None:
 
 def test_field_detail_rejects_bins_and_top_outside_their_range(database: Path) -> None:
     with pytest.raises(SqueegeeError, match="bins must be between 5 and 50"):
-        queries.field_detail(database, 1, 2, "amount_cents", bins=2)
+        queries.field_detail(database, 1, 3, "amount_cents", bins=2)
     with pytest.raises(SqueegeeError, match="top must be between 1 and 100"):
-        queries.field_detail(database, 1, 2, "email", top=0)
+        queries.field_detail(database, 1, 3, "email", top=0)
 
 
 def test_an_unknown_field_is_an_error(database: Path) -> None:
     with pytest.raises(SqueegeeError, match="has no field 'nope'"):
-        queries.field_detail(database, 1, 2, "nope")
+        queries.field_detail(database, 1, 3, "nope")
 
 
 def test_a_missing_database_is_an_error(tmp_path: Path) -> None:
@@ -293,7 +307,7 @@ def test_a_field_holding_two_types_is_reported_as_mixed(tmp_path: Path) -> None:
     (tmp_path / "in.csv").write_text("id\n1\n2\n3\n")
     run_once(script, tmp_path / "in.csv", database)
 
-    fields = queries.stage_fields(database, 1, 0)
+    fields = queries.stage_fields(database, 1, 1)
 
     assert next(field for field in fields["items"] if field["field"] == "v")["inferred_type"] == (
         "mixed"
@@ -323,7 +337,7 @@ def test_a_stage_that_never_ran_reports_no_durations(tmp_path: Path) -> None:
     (tmp_path / "in.csv").write_text("id\n1\n")
     run_once(script, tmp_path / "in.csv", database)
 
-    untouched = queries.run_summary(database, 1)["stages"][1]
+    untouched = queries.run_summary(database, 1)["stages"][2]
 
     assert untouched["records_in"] == 0
     assert untouched["duration_us_median"] is None
@@ -345,3 +359,7 @@ def test_a_run_still_in_progress_has_no_duration(tmp_path: Path) -> None:
     listed = queries.list_runs(database)["items"][0]
 
     assert (listed["status"], listed["ended_at"], listed["duration_us"]) == ("started", None, None)
+
+
+def test_a_stage_returning_text_has_no_fields_to_measure(database: Path) -> None:
+    assert queries.stage_fields(database, 1, 8)["items"] == []

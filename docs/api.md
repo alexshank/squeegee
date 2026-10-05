@@ -233,7 +233,7 @@ The full trace of one record through the pipeline. This is the debugging screen'
 
 `changed_fields` is computed server side by comparing each event's input and output at the top level, so the client highlights rather than diffs. The list ends at the stage where the record was dropped or errored; it does not contain placeholder entries for stages that never ran.
 
-Two optional parameters support the previous and next controls: `status` restricts stepping to records with a given final status, and the response includes `previous_record_index` and `next_record_index` under that restriction, either of which may be `null`.
+Three optional parameters support the previous and next controls: `stage` (default `0`), `status`, and `q`. They are the records table's filters, so `previous_record_index` and `next_record_index` are the neighbouring rows of that stage's records endpoint with the same `status` and `q`, either of which may be `null`. Every record has a stage zero event, so the default walks every record. `listed` says whether this record is itself a row under those filters, so the UI can move off a record a new filter hides.
 
 ### `GET /api/runs/{run_id}/stages/{position}/fields`
 

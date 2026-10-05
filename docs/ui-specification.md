@@ -16,9 +16,9 @@ The UI is a local, read-only window onto the SQLite database. It answers three q
 
 Option 2, Split View, from [ui-wireframes/](ui-wireframes/). The runs list is its own screen; everything else lives in one three pane view of a run, because the product requirement is finding the stage responsible for a wrong record in under a minute, and that is hard when stage, records, source, and trace are on four different pages.
 
-State that a developer would want to share or return to lives in the query string: `?stage=2&record=8&status=error&step=error&q=n%2Fa&field=amount_cents&source=2`. A refresh restores the same view, including an open source modal.
+State that a developer would want to share or return to lives in the query string: `?stage=2&record=8&status=error&q=n%2Fa&field=amount_cents&source=2`. A refresh restores the same view, including an open source modal.
 
-`status` and `step` are deliberately separate. `status` filters the record table on what the selected stage did to each record, while `step` decides which records the trace's previous and next controls walk through, and that filters on where a record finally ended up. Sharing one parameter between them means the next control can land on a record that is not in the table.
+The trace's previous and next controls walk the records table: the selected stage, its `status` filter, and its search. Choosing a status filter or typing a search that no longer lists the selected record moves to the first record it does list, or back to the empty trace when it lists none.
 
 Every parameter is validated when it is read. An unparseable stage falls back to the first one, an empty or non-numeric record is treated as no record rather than as record zero, and a status that is not one of the three known values is ignored rather than forwarded to the API.
 
@@ -62,7 +62,7 @@ The same component renders the source in the modal opened from a stage's code ic
 
 ### 4. Record trace
 
-The debugging screen. For one record: its source value at the top, then one panel per stage showing output, status, and duration. Input is not repeated here: each stage's output is the next stage's input, and the stage detail screen shows the selected stage's input beside its output. Changed fields are highlighted against the previous stage's value, so the developer can see which stage introduced the wrong value without reading two JSON blobs side by side. Where the record was dropped or errored, the panel shows the reason and the trace ends there. Previous and next controls step through neighbouring records with the same status, which makes scanning a run's errors quick.
+The debugging screen. For one record: one panel per stage, starting with stage zero (the reader), showing output, status, and duration. Input is not repeated here: each stage's output is the next stage's input, and the stage detail screen shows the selected stage's input beside its output. Changed fields are highlighted against the previous stage's value, so the developer can see which stage introduced the wrong value without reading two JSON blobs side by side. Where the record was dropped or errored, the panel shows the reason and the trace ends there. Previous and next controls step through the neighbouring rows of the records table, so filtering the table to errors makes scanning a run's errors quick.
 
 ### 5. Field analytics
 

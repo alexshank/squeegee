@@ -6,21 +6,25 @@ A small, real pipeline lives in [`examples/`](../examples). It exists to be read
 
 | File | What it is |
 | --- | --- |
-| [`examples/clean_orders.py`](../examples/clean_orders.py) | Five stages, none of them annotated, because a user script never has to be |
-| [`examples/orders.csv`](../examples/orders.csv) | Ten rows of plausible mess: mixed-case headers, currency strings, internal test accounts, a malformed email, a duplicate order |
+| [`examples/clean_orders.py`](../examples/clean_orders.py) | Eight stages, none of them annotated, because a user script never has to be |
+| [`examples/orders.csv`](../examples/orders.csv) | Ten rows of plausible mess: mixed-case headers, currency strings, internal test accounts, a malformed email, a duplicate order, and line items packed into one column |
 | [`examples/orders_with_a_bad_row.csv`](../examples/orders_with_a_bad_row.csv) | The same ten rows, except order 1008's amount is `n/a`, which makes `parse_amount` raise |
 
 ## The stages
 
 | Position | Stage | What it does |
 | --- | --- | --- |
-| 0 | `normalize_headers` | Lowercases column names and turns spaces into underscores, so `Order ID` becomes `order_id` |
-| 1 | `drop_internal_test_orders` | Returns `None` for `@internal.test` addresses, dropping them |
-| 2 | `parse_amount` | Turns `"$1,299.00"` into `129900`. Raises `ValueError` on anything that is not a number |
-| 3 | `validate_email` | Drops records whose email cannot be an email |
-| 4 | `dedupe_by_id` | Keeps the first record for each order id and drops the rest |
+| 0 | `read_csv` | Stage zero: the reader, one record per CSV row, with the raw line as its input |
+| 1 | `normalize_headers` | Lowercases column names and turns spaces into underscores, so `Order ID` becomes `order_id` |
+| 2 | `drop_internal_test_orders` | Returns `None` for `@internal.test` addresses, dropping them |
+| 3 | `parse_amount` | Turns `"$1,299.00"` into `129900`. Raises `ValueError` on anything that is not a number |
+| 4 | `validate_email` | Drops records whose email cannot be an email |
+| 5 | `dedupe_by_id` | Keeps the first record for each order id and drops the rest |
+| 6 | `parse_line_items` | Turns `"widget x2; gadget x1"` into a nested list of `{"sku", "quantity"}` objects |
+| 7 | `nest_the_customer` | Moves the email into a nested `customer` object beside its domain |
+| 8 | `to_csv_text` | Returns CSV text, a header and one row, instead of a dictionary; nested fields become JSON inside it |
 
-Two things in there are worth noticing. The stage at position 1 is registered as `drop_internal_test_orders` through `@stage(name=...)` while the function is called `drop_test_rows`, which is how a stage gets a name that reads well in the UI. And `dedupe_by_id` holds state between records, which Squeegee allows but which makes the result depend on the order records arrive in.
+Two things in there are worth noticing. The stage at position 2 is registered as `drop_internal_test_orders` through `@stage(name=...)` while the function is called `drop_test_rows`, which is how a stage gets a name that reads well in the UI. `to_csv_text` shows that a stage may return text: the UI highlights it as CSV, and the CSV writer reads it back into rows. And `dedupe_by_id` holds state between records, which Squeegee allows but which makes the result depend on the order records arrive in.
 
 ## The happy path
 
@@ -33,16 +37,13 @@ run 1 finished: 10 in, 6 out, 4 dropped, 0 errored, 0.05s
 recorded in /tmp/squeegee.db
 ```
 
-Exit code 0. Four records are dropped, and each for a different reason: two internal test accounts at stage 1, one malformed email at stage 3, one duplicate order at stage 4. `/tmp/clean.csv` holds:
+Exit code 0. Four records are dropped, and each for a different reason: two internal test accounts at stage 2, one malformed email at stage 4, one duplicate order at stage 5. `/tmp/clean.csv` holds:
 
 ```
-order_id,email,placed_on,amount_cents
-1001,ada@example.com,2026-09-01,2999
-1003,grace@example.com,2026-09-02,129900
-1005,linus@example.com,2026-09-03,400
-1006,margaret@example.com,2026-09-04,13000
-1008,katherine@example.com,2026-09-05,7820
-1009,barbara@example.com,2026-09-05,999
+order_id,placed_on,items,amount_cents,customer
+1001,2026-09-01,"[{""sku"": ""widget"", ""quantity"": 2}, {""sku"": ""gadget"", ""quantity"": 1}]",2999,"{""email"": ""ada@example.com"", ""domain"": ""example.com""}"
+1003,2026-09-02,"[{""sku"": ""laptop"", ""quantity"": 1}]",129900,"{""email"": ""grace@example.com"", ""domain"": ""example.com""}"
+...
 ```
 
 ## The failing path
@@ -52,7 +53,7 @@ squeegee run examples/clean_orders.py --input examples/orders_with_a_bad_row.csv
 ```
 
 ```
-run 2 failed at stage 2 (parse_amount), record 8: ValueError: could not convert string to float: 'n/a'
+run 2 failed at stage 3 (parse_amount), record 8: ValueError: could not convert string to float: 'n/a'
 run 2 failed: 9 in, 4 reached the last stage, 4 dropped, 1 errored, 0.01s
 recorded in /tmp/squeegee.db
 ```

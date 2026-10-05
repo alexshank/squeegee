@@ -3,18 +3,19 @@
 from __future__ import annotations
 
 import copy
+import itertools
 import random
 import time
 import traceback
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
 from squeegee.errors import SqueegeeError
-from squeegee.io import read_records, reader_for, write_records, writer_for
-from squeegee.stages import Stage, registered_stages
+from squeegee.io import FORMATS, Reader, reader_for, write_records, writer_for
+from squeegee.stages import Stage, registered_stages, source_stage
 from squeegee.store import Store
 
 Record = dict[str, Any]
@@ -59,7 +60,9 @@ def run(
 ) -> RunResult:
     """Run the registered stages over ``input_path`` and record every step.
 
-    Stages run in declaration order, one record at a time. A stage returning
+    The reader that breaks the input into records is recorded as stage zero,
+    with each record's raw slice as its input. The script's stages follow in
+    declaration order, one record at a time. A stage returning
     None drops its record; a stage raising aborts the run unless
     ``continue_on_error`` is set, and either way the outcome is recorded.
 
@@ -69,6 +72,7 @@ def run(
     """
     stages = registered_stages()
     _check_wiring(stages, input_path, output_path)
+    reader = reader_for(input_path)
     started = time.perf_counter_ns()
 
     with Store(database_path) as store:
@@ -85,15 +89,26 @@ def run(
             },
         )
         run_stage_ids = [
-            store.register_stage(run_id, position, stage) for position, stage in enumerate(stages)
+            store.register_stage(run_id, position, stage)
+            for position, stage in enumerate([source_stage(reader, FORMATS.get(reader)), *stages])
         ]
         counts = {"in": 0, "out": 0, "dropped": 0, "errored": 0}
         survivors: list[Record] = []
         failure: Failure | None = None
 
-        for index, source in enumerate(_selected(input_path, limit, sample, seed)):
+        for index, (raw, source, read_us) in enumerate(
+            _selected(reader, input_path, limit, sample, seed)
+        ):
             counts["in"] += 1
             record_id = store.add_record(run_id, index, source)
+            store.add_record_event(
+                record_id=record_id,
+                run_stage_id=run_stage_ids[0],
+                status="ok",
+                record_input=raw,
+                record_output=source,
+                duration_us=read_us,
+            )
             outcome, failure = _drive(
                 store=store,
                 stages=stages,
@@ -143,7 +158,8 @@ def _drive(
     counts: dict[str, int],
 ) -> tuple[Record | None, Failure | None]:
     current = source
-    for position, stage in enumerate(stages):
+    # position zero is the reader, which has already run
+    for position, stage in enumerate(stages, start=1):
         # the stage gets its own copy, so the value recorded as its input stays true
         # even when a stage ignores the advice not to mutate in place. The store
         # serializes eagerly, so `current` itself is safe to hand over as the input.
@@ -202,21 +218,30 @@ def _check_wiring(stages: list[Stage], input_path: Path, output_path: Path | Non
         )
     if not input_path.is_file():
         raise SqueegeeError(f"input file {input_path} does not exist")
-    reader_for(input_path)
     if output_path is not None:
         writer_for(output_path)
 
 
 def _selected(
-    input_path: Path, limit: int | None, sample: int | None, seed: int | None
-) -> Iterable[Record]:
+    reader: Reader, input_path: Path, limit: int | None, sample: int | None, seed: int | None
+) -> Iterable[tuple[str, Record, int]]:
     if sample is None:
-        records = read_records(input_path)
-        return (record for number, record in enumerate(records) if limit is None or number < limit)
+        # stopping the reader, not filtering after it, so a limited run never reads the rest
+        return itertools.islice(_timed(reader(input_path)), limit)
     # sampling has to see every record before it can choose, which is affordable
     # only because squeegee is for small data
-    population = list(read_records(input_path))
+    population = list(_timed(reader(input_path)))
     return random.Random(seed).sample(population, min(sample, len(population)))
+
+
+def _timed(pairs: Iterator[tuple[str, Record]]) -> Iterator[tuple[str, Record, int]]:
+    while True:
+        started = time.perf_counter_ns()
+        try:
+            raw, record = next(pairs)
+        except StopIteration:
+            return
+        yield raw, record, _elapsed_us(started)
 
 
 def _elapsed_us(started_ns: int) -> int:

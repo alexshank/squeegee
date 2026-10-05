@@ -79,12 +79,12 @@ def test_query_parameters_reach_the_query_layer(base_url: str) -> None:
 
 def test_a_run_its_stages_and_one_stage(base_url: str) -> None:
     assert get(base_url, "/api/runs/2")["status"] == "failed"
-    assert len(get(base_url, "/api/runs/2/stages")["items"]) == 5
-    assert get(base_url, "/api/runs/2/stages/2")["name"] == "parse_amount"
+    assert len(get(base_url, "/api/runs/2/stages")["items"]) == 9
+    assert get(base_url, "/api/runs/2/stages/3")["name"] == "parse_amount"
 
 
 def test_stage_records_filter_by_status(base_url: str) -> None:
-    errors = get(base_url, "/api/runs/2/stages/2/records?status=error")
+    errors = get(base_url, "/api/runs/2/stages/3/records?status=error")
 
     assert [event["record_index"] for event in errors["items"]] == [8]
 
@@ -93,28 +93,29 @@ def test_a_record_trace_is_served(base_url: str) -> None:
     trace = get(base_url, "/api/runs/2/records/8")
 
     assert trace["final_status"] == "error"
-    assert trace["events"][2]["stage_name"] == "parse_amount"
+    assert trace["events"][3]["stage_name"] == "parse_amount"
 
 
 def test_field_statistics_are_served(base_url: str) -> None:
-    fields = get(base_url, "/api/runs/1/stages/2/fields")
+    fields = get(base_url, "/api/runs/1/stages/3/fields")
 
     assert {field["field"] for field in fields["items"]} == {
         "order_id",
         "email",
+        "items",
         "placed_on",
         "amount_cents",
     }
 
 
 def test_a_field_detail_is_served_with_its_parameters(base_url: str) -> None:
-    detail = get(base_url, "/api/runs/1/stages/2/fields/amount_cents?bins=5")
+    detail = get(base_url, "/api/runs/1/stages/3/fields/amount_cents?bins=5")
 
     assert len(detail["after"]["histogram"]) == 5
 
 
 def test_a_field_name_may_be_percent_encoded(base_url: str) -> None:
-    assert get(base_url, "/api/runs/1/stages/2/fields/amount%5Fcents")["field"] == "amount_cents"
+    assert get(base_url, "/api/runs/1/stages/3/fields/amount%5Fcents")["field"] == "amount_cents"
 
 
 def test_a_bad_parameter_is_a_400_naming_the_problem(base_url: str) -> None:

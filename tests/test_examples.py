@@ -57,11 +57,13 @@ def test_the_example_cleans_the_example_orders(tmp_path: Path) -> None:
         "1008",
         "1009",
     ]
+    # the last stage returns CSV text, and nested fields travel through it as JSON
     assert cleaned[1] == {
         "order_id": "1003",
-        "email": "grace@example.com",
         "placed_on": "2026-09-02",
+        "items": '[{"sku": "laptop", "quantity": 1}]',
         "amount_cents": "129900",
+        "customer": '{"email": "grace@example.com", "domain": "example.com"}',
     }
 
 
@@ -86,7 +88,7 @@ def test_the_bad_row_stops_the_run_and_writes_no_output(
     assert exit_code == EXIT_RUN_FAILED
     assert not output.exists()
     captured = capsys.readouterr()
-    assert "failed at stage 2 (parse_amount), record 8" in captured.err
+    assert "failed at stage 3 (parse_amount), record 8" in captured.err
     assert "could not convert string to float: 'n/a'" in captured.err
     assert "9 in, 4 reached the last stage, 4 dropped, 1 errored" in captured.out
 
@@ -148,8 +150,8 @@ def test_the_example_cleans_the_2022_words_journal(
 
     assert exit_code == EXIT_OK
     entries = json.loads(output.read_text())
-    # 38 blocks in: the file's title is a record of its own, dropped by the first stage
-    assert len(entries) == 37
+    # 75 blocks in: the file's title is a record of its own, dropped by the first stage
+    assert len(entries) == 74
     assert entries[0]["date"] == "2022-01-01"
     assert entries[0]["quotes"][0]["source"] == "big lewbowski"
     # an entry whose quote runs across a blank line stays one record
@@ -173,7 +175,7 @@ def test_the_example_cleans_the_2022_words_journal(
         }
     ]
     # one question per quote, and the two-quote day asks twice
-    assert len(asked) == 38
+    assert len(asked) == 76
     assert asked[0]["state"].endswith("- big lewbowski")
 
 

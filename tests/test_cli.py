@@ -1,10 +1,12 @@
 """Tests for the command line interface."""
 
+import tempfile
 from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 
+from squeegee import cli
 from squeegee.cli import EXIT_OK, EXIT_RUN_FAILED, EXIT_USAGE, main
 from squeegee.stages import clear_registry
 from squeegee.store import Store
@@ -81,7 +83,7 @@ def test_a_failed_run_exits_non_zero_and_names_the_stage(
 
     captured = capsys.readouterr()
     assert exit_code == EXIT_RUN_FAILED
-    assert "failed at stage 1 (fail_on_the_third), record 2" in captured.err
+    assert "failed at stage 2 (fail_on_the_third), record 2" in captured.err
     assert "ValueError: bad row" in captured.err
 
 
@@ -121,7 +123,7 @@ def test_show_prints_every_stage(workspace: Path, capsys: pytest.CaptureFixture[
     assert run_cli(workspace, "show", "1") == EXIT_OK
     shown = capsys.readouterr().out
     assert "drop_the_second" in shown
-    assert "failed in stage 1 (fail_on_the_third) on record 2" in shown
+    assert "failed in stage 2 (fail_on_the_third) on record 2" in shown
 
 
 def test_show_of_an_unknown_run_is_a_usage_error(
@@ -175,15 +177,27 @@ def test_the_ui_serves_the_database_it_was_given(
     assert served == {"database": workspace / "squeegee.db", "port": 9999}
 
 
-def test_the_database_defaults_to_beside_the_script(
+def test_n_truncates_the_input_to_its_first_records(
     workspace: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
+    script, orders = str(workspace / "clean.py"), str(workspace / "orders.csv")
+    run_cli(workspace, "run", script, "--input", orders, "-n", "1")
+
+    assert "1 in" in capsys.readouterr().out
+
+
+def test_every_command_defaults_to_one_shared_database(
+    workspace: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert Path(tempfile.gettempdir()) / "squeegee.db" == cli.DEFAULT_DATABASE
+    monkeypatch.setattr(cli, "DEFAULT_DATABASE", workspace / "default.db")
     (workspace / "orders.csv").write_text("id\n1\n")
 
     main(["run", str(workspace / "clean.py"), "--input", str(workspace / "orders.csv")])
+    main(["runs"])
 
-    assert (workspace / ".squeegee" / "squeegee.db").is_file()
-    assert ".squeegee/squeegee.db" in capsys.readouterr().out
+    assert "default.db" in capsys.readouterr().out
+    assert (workspace / "default.db").is_file()
 
 
 def test_an_empty_database_lists_nothing(

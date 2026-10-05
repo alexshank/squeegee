@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import sys
+import tempfile
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
@@ -20,7 +21,8 @@ from squeegee.runner import RunResult, run
 from squeegee.stages import clear_registry
 from squeegee.store import list_runs, run_summary
 
-DEFAULT_DATABASE = Path(".squeegee") / "squeegee.db"
+# one shared default, so `run` and `ui` find each other without any flags
+DEFAULT_DATABASE = Path(tempfile.gettempdir()) / "squeegee.db"
 
 EXIT_OK = 0
 EXIT_RUN_FAILED = 1
@@ -47,8 +49,10 @@ def _parser() -> argparse.ArgumentParser:
     runner.add_argument("script", type=Path)
     runner.add_argument("--input", type=Path, required=True)
     runner.add_argument("--output", type=Path)
-    runner.add_argument("--db", type=Path, help=f"defaults to {DEFAULT_DATABASE} beside the script")
-    runner.add_argument("--limit", type=int, help="process only the first N records")
+    runner.add_argument("--db", type=Path, default=DEFAULT_DATABASE)
+    runner.add_argument(
+        "-n", "--limit", type=int, help="read only the first N records of the input"
+    )
     runner.add_argument("--sample", type=int, help="process a random sample of N records")
     runner.add_argument("--seed", type=int, help="make --sample reproducible")
     runner.add_argument(
@@ -84,7 +88,7 @@ def _run(arguments: argparse.Namespace) -> int:
         script_path=script,
         input_path=arguments.input,
         output_path=arguments.output,
-        database_path=arguments.db or script.parent / DEFAULT_DATABASE,
+        database_path=arguments.db,
         limit=arguments.limit,
         sample=arguments.sample,
         seed=arguments.seed,

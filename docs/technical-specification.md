@@ -87,7 +87,7 @@ This asymmetry is deliberate. Squeegee's own source is checked with `mypy --stri
 ## Execution model
 
 1. The CLI imports the user's script as a module. Import triggers the decorators, which append to a module-level registry in declaration order.
-2. The runner resolves the reader from the input file extension and the writer from the output file extension. A script that called `squeegee.io.register_reader(suffix, reader)` at import time has its own reader used instead, which is how a free-text file whose entries only that file knows how to delimit becomes records. Registered readers are cleared before each script is imported.
+2. The runner resolves the reader from the input file extension, else by sniffing the content (JSON, then CSV), else plain text, and the writer from the output file extension. The reader is recorded as stage zero: each record's stage zero event holds the raw slice it was read from as input and the parsed record as output. See [decisions/0003-stage-zero-and-splitting-stages.md](decisions/0003-stage-zero-and-splitting-stages.md). A script that called `squeegee.io.register_reader(suffix, reader)` at import time has its own reader used instead, which is how a free-text file whose entries only that file knows how to delimit becomes records. Registered readers are cleared before each script is imported.
 3. The runner opens the store, inserts a `runs` row, and inserts or reuses a `stage_versions` row for each registered stage.
 4. Records stream one at a time. For each record the runner assigns a record index, then walks the stages in order. For each stage it writes one `record_events` row holding the input value, the output value, a status, and the elapsed time.
 5. A stage returning `None` marks the record dropped. No later stage runs for that record.
@@ -114,10 +114,10 @@ squeegee ui [--port 8765]
 
 | Flag | Meaning |
 | --- | --- |
-| `--input PATH` | Input file. Required. Extension selects the reader. |
+| `--input PATH` | Input file. Required. Extension, then content, selects the reader. |
 | `--output PATH` | Output file. Optional; omit to record a run without writing results. |
-| `--db PATH` | Database file. Defaults to `.squeegee/squeegee.db` next to the script. |
-| `--limit N` | Process only the first N records. |
+| `--db PATH` | Database file. Defaults to `squeegee.db` in the system temp directory (`/tmp/squeegee.db`), for every command. |
+| `-n`, `--limit N` | Read only the first N records; the reader stops there. |
 | `--sample N` | Process a random sample of N records, with `--seed` for reproducibility. |
 | `--continue-on-error` | Record stage exceptions and keep going. Default is to abort on the first one. |
 | `--quiet` | Suppress the progress summary on stdout. |

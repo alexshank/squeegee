@@ -4,7 +4,7 @@ import { useState } from "react";
 
 // written against the UI's custom properties rather than imported, so the code
 // block follows the system theme through the same variables as everything else
-const THEME: PrismTheme = {
+export const THEME: PrismTheme = {
   plain: { color: "var(--text)", backgroundColor: "transparent" },
   styles: [
     { types: ["keyword", "builtin", "operator"], style: { color: "var(--code-keyword)" } },

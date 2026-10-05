@@ -3,12 +3,21 @@
 import json
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from squeegee.errors import FormatError
-from squeegee.io import clear_readers, read_records, register_reader, write_records
+from squeegee.io import (
+    clear_readers,
+    read_records,
+    reader_for,
+    register_reader,
+    write_records,
+)
 from squeegee.io.text_io import blocks_starting_with
+
+Record = dict[str, Any]
 
 RECORDS = [
     {"id": "1", "amount": "$29.99"},
@@ -60,19 +69,32 @@ def test_reading_is_lazy(tmp_path: Path) -> None:
         next(records)
 
 
-def test_an_unknown_extension_fails_before_the_file_is_opened(tmp_path: Path) -> None:
-    missing = tmp_path / "orders.parquet"
+@pytest.mark.parametrize(
+    ("content", "expected"),
+    [
+        ('{"id": "1"}\n{"id": "2"}\n', [{"id": "1"}, {"id": "2"}]),
+        ("id,amount\n1,$29.99\n2,$4.00\n", RECORDS),
+        ("just some notes", [{"line_number": 1, "text": "just some notes"}]),
+    ],
+    ids=["json", "csv", "plain text"],
+)
+def test_an_unknown_extension_is_read_by_its_content(
+    tmp_path: Path, content: str, expected: list[Record]
+) -> None:
+    path = tmp_path / "export.dat"
+    path.write_text(content)
 
-    with pytest.raises(FormatError, match="not supported") as raised:
-        list(read_records(missing))
-
-    assert "orders.parquet" in str(raised.value)
-    assert ".csv" in str(raised.value)
+    assert list(read_records(path)) == expected
 
 
-def test_a_file_with_no_extension_says_so(tmp_path: Path) -> None:
-    with pytest.raises(FormatError, match="no extension"):
-        list(read_records(tmp_path / "orders"))
+def test_each_record_carries_the_raw_slice_it_was_read_from(tmp_path: Path) -> None:
+    path = tmp_path / "quoted.csv"
+    path.write_text('id,note\n1,"two\nlines"\n2,plain\n')
+
+    assert [raw for raw, _ in reader_for(path)(path)] == [
+        'id,note\n1,"two\nlines"',
+        "id,note\n2,plain",
+    ]
 
 
 def test_writing_an_unknown_extension_fails(tmp_path: Path) -> None:
@@ -138,7 +160,7 @@ def test_a_block_reader_keeps_the_blank_lines_inside_an_entry(tmp_path: Path) ->
     path = tmp_path / "journal.txt"
     path.write_text("a title\n\n01/01 - one\n\n  continued\n\n01/02 - two\n")
 
-    records = list(blocks_starting_with(r"\d{1,2}/\d{1,2}")(path))
+    records = [record for _, record in blocks_starting_with(r"\d{1,2}/\d{1,2}")(path)]
 
     assert records == [
         {"line_number": 1, "text": "a title"},
@@ -157,3 +179,10 @@ def test_a_registered_reader_wins_until_the_readers_are_cleared(tmp_path: Path) 
     clear_readers()
 
     assert len(list(read_records(path))) == 2
+
+
+def test_csv_text_records_are_written_as_their_rows(tmp_path: Path) -> None:
+    path = tmp_path / "out.csv"
+
+    assert write_records(path, ["id,amount\n1,$29.99", "id,amount\n2,$4.00"]) == 2  # type: ignore[list-item]
+    assert list(read_records(path)) == RECORDS

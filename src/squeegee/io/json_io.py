@@ -10,8 +10,8 @@ from squeegee.errors import FormatError
 Record = dict[str, Any]
 
 
-def read(path: Path) -> Iterator[Record]:
-    """Yield records from either a top-level array or one JSON object per line."""
+def read_json(path: Path) -> Iterator[tuple[str, Record]]:
+    """One record per element of a top-level array, or per line of JSON Lines."""
     if _starts_an_array(path):
         with path.open(encoding="utf-8") as handle:
             loaded = json.load(handle)
@@ -20,12 +20,13 @@ def read(path: Path) -> Iterator[Record]:
                 raise FormatError(
                     f"{path.name} element {position} holds {type(element).__name__}, not an object"
                 )
-            yield element
+            # the parser keeps no offsets, so an element's raw text is re-serialized
+            yield json.dumps(element), element
         return
     with path.open(encoding="utf-8") as handle:
         for number, line in enumerate(handle, start=1):
             if line.strip():
-                yield _object_from(line, path, number)
+                yield line.strip(), _object_from(line, path, number)
 
 
 def write_array(path: Path, records: Iterable[Record]) -> int:

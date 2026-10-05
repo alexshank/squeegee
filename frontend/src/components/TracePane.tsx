@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import type { Status, Trace } from "../api";
+import type { Trace } from "../api";
 import { JsonValue } from "./JsonValue";
+import { Label } from "./RawValue";
 import { Empty, PaneHeading } from "./StagesPane";
 import { StatusPill } from "./StatusPill";
 
@@ -8,16 +9,14 @@ interface Props {
   trace: Trace | null;
   loading: boolean;
   error: string | null;
-  step: Status | null;
-  onStep: (status: Status | null) => void;
   onRecord: (index: number) => void;
 }
 
 /** One record's whole journey, stage by stage, with changed fields marked. */
-export function TracePane({ trace, loading, error, step, onStep, onRecord }: Props) {
+export function TracePane({ trace, loading, error, onRecord }: Props) {
   if (!trace) {
     return (
-      <aside style={{ borderLeft: "1px solid var(--border)" }}>
+      <aside>
         <PaneHeading>trace</PaneHeading>
         {error ? (
           <p className="status-error" style={{ padding: "0 0.6rem" }}>
@@ -33,7 +32,7 @@ export function TracePane({ trace, loading, error, step, onStep, onRecord }: Pro
   }
 
   return (
-    <aside style={{ borderLeft: "1px solid var(--border)", overflowY: "auto" }}>
+    <aside style={{ overflowY: "auto" }}>
       <PaneHeading>{`record ${trace.record_index}`}</PaneHeading>
       <div
         style={{
@@ -43,46 +42,14 @@ export function TracePane({ trace, loading, error, step, onStep, onRecord }: Pro
           alignItems: "center",
         }}
       >
-        <StepButton
-          to={trace.previous_record_index}
-          onRecord={onRecord}
-          label={`previous ${step ?? "record"}`}
-        >
-          <ChevronLeft size={12} aria-hidden />
+        <StepButton to={trace.previous_record_index} onRecord={onRecord} label="previous record">
+          <ChevronLeft size={14} aria-hidden />
+          previous record
         </StepButton>
-        <StepButton
-          to={trace.next_record_index}
-          onRecord={onRecord}
-          label={`next ${step ?? "record"}`}
-        >
-          <ChevronRight size={12} aria-hidden />
+        <StepButton to={trace.next_record_index} onRecord={onRecord} label="next record">
+          next record
+          <ChevronRight size={14} aria-hidden />
         </StepButton>
-        {/* stepping follows where a record ended up, which is a different question
-            from what one stage did to it, so it carries its own filter */}
-        <label style={{ color: "var(--muted)", fontSize: "0.72rem" }}>
-          step through{" "}
-          <select
-            value={step ?? ""}
-            onChange={(event) => onStep((event.target.value || null) as Status | null)}
-            style={{
-              background: "var(--bg)",
-              color: "var(--text)",
-              border: "1px solid var(--border)",
-              font: "inherit",
-              fontSize: "0.72rem",
-            }}
-          >
-            <option value="">every record</option>
-            <option value="ok">ok only</option>
-            <option value="dropped">dropped only</option>
-            <option value="error">errored only</option>
-          </select>
-        </label>
-      </div>
-
-      <div style={{ padding: "0 0.6rem 0.6rem" }}>
-        <Label>as read</Label>
-        <JsonValue value={trace.source} />
       </div>
 
       {trace.events.map((event) => (
@@ -135,21 +102,6 @@ export function TracePane({ trace, loading, error, step, onStep, onRecord }: Pro
   );
 }
 
-function Label({ children }: { children: string }) {
-  return (
-    <div
-      style={{
-        fontSize: "0.65rem",
-        textTransform: "uppercase",
-        letterSpacing: "0.06em",
-        color: "var(--muted)",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
 function StepButton({
   to,
   onRecord,
@@ -168,20 +120,21 @@ function StepButton({
       aria-label={label}
       onClick={() => to !== null && onRecord(to)}
       style={{
+        flex: 1,
         display: "flex",
         alignItems: "center",
+        justifyContent: "center",
         gap: "0.2rem",
         border: "1px solid var(--border)",
         background: "none",
         color: to === null ? "var(--muted)" : "var(--text)",
         cursor: to === null ? "default" : "pointer",
         font: "inherit",
-        fontSize: "0.72rem",
-        padding: "0.05rem 0.4rem",
+        fontSize: "0.75rem",
+        padding: "0.2rem 0.4rem",
       }}
     >
       {children}
-      {label}
     </button>
   );
 }

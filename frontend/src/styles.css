@@ -41,12 +41,18 @@
   box-sizing: border-box;
 }
 
+/* every inline rem scales from here, so this is the one density lever */
+html {
+  font-size: 112.5%;
+}
+
 body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
   font-family: var(--ui);
-  font-size: 14px;
+  font-size: 15px;
+  line-height: 1.45;
 }
 
 code,

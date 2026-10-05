@@ -36,9 +36,15 @@ export function RunsList({ runs }: { runs: RunListing[] }) {
               </span>
             </td>
             <td style={cell}>{run.records_in}</td>
-            <td style={cell}>{run.records_out}</td>
-            <td style={cell}>{run.records_dropped}</td>
-            <td style={cell}>{run.records_errored}</td>
+            <td style={cell} className={run.records_out > 0 ? "status-ok" : undefined}>
+              {run.records_out}
+            </td>
+            <td style={cell} className={run.records_dropped > 0 ? "status-dropped" : undefined}>
+              {run.records_dropped}
+            </td>
+            <td style={cell} className={run.records_errored > 0 ? "status-error" : undefined}>
+              {run.records_errored}
+            </td>
             <td style={{ ...cell, color: "var(--muted)" }}>{run.started_at.slice(0, 19)}</td>
           </tr>
         ))}
