@@ -13,6 +13,10 @@ The reader is recorded as **stage zero** of every run. It is an ordinary `run_st
 
 A reader is any callable `Path -> Iterator[(raw, record)]`. It is chosen by a script's `register_reader`, then by extension, then by sniffing the content (JSON, then CSV), falling back to plain text. `stage_versions.input_format` tells the UI how to highlight the raw slices; when it is empty the UI infers (JSON if the value parses, plain text otherwise).
 
+## The accumulator
+
+The writer mirrors the reader. Given an output path, a run ends with an `accumulator` stage whose events take each surviving record as input and the slice it was written as as output, so how the output was assembled is as visible as how the input was broken up. The run keeps its script, input, and output files in `run_files`, which the UI opens from the stages panel.
+
 ## Splitting stages (next)
 
 A splitting stage is a third `kind`, `split`: a function from one record to an iterable of records.
@@ -26,4 +30,4 @@ Non-file sources (a database, a directory) fit the same contract: the "path" bec
 ## Consequences
 
 - Positions shift by one: a script's first stage is at position 1.
-- The schema gained `stage_versions.kind` and `stage_versions.input_format`, so `PRAGMA user_version` is now checked and a database from another schema is refused rather than migrated, consistent with the append-only rule.
+- The schema gained `stage_versions.kind`, `stage_versions.input_format`, and `run_files`, so `PRAGMA user_version` is now checked and a database from another schema is refused rather than migrated, consistent with the append-only rule.

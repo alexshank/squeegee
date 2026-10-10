@@ -117,6 +117,23 @@ def stage_detail(database_path: Path, run_id: int, position: int) -> Row:
         return detail
 
 
+def run_file(database_path: Path, run_id: int, role: str) -> Row:
+    """A file the run kept: its script, its input, or its output.
+
+    Raises:
+        SqueegeeError: The run kept no such file, as a run without an output path,
+            or one that failed before writing, keeps no output.
+    """
+    with _read_only(database_path) as connection:
+        row = connection.execute(
+            "SELECT role, path, format, content FROM run_files WHERE run_id = ? AND role = ?",
+            (run_id, role),
+        ).fetchone()
+        _require(row, f"run {run_id} kept no {role} file")
+        # decoded only for display, where a stray byte is better shown than refused
+        return {**dict(row), "content": row["content"].decode("utf-8", errors="replace")}
+
+
 def stage_records(
     database_path: Path,
     run_id: int,
@@ -430,7 +447,7 @@ def _inferred_type(type_count: int, a_type: str | None) -> str:
 def _stage_rows(connection: sqlite3.Connection, run_id: int) -> list[Row]:
     stages = connection.execute(
         "SELECT rs.id AS run_stage_id, rs.position, sv.id AS stage_version_id, sv.name, "
-        "sv.description "
+        "sv.description, sv.kind "
         "FROM run_stages rs JOIN stage_versions sv ON sv.id = rs.stage_version_id "
         "WHERE rs.run_id = ? ORDER BY rs.position",
         (run_id,),
@@ -582,7 +599,11 @@ def _counts(connection: sqlite3.Connection, run_id: int) -> Row:
     counts["records_out"] = connection.execute(
         "SELECT COUNT(*) FROM record_events e JOIN run_stages rs ON rs.id = e.run_stage_id "
         "WHERE rs.run_id = ? AND e.status = 'ok' "
-        "AND rs.position = (SELECT MAX(position) FROM run_stages WHERE run_id = ?)",
+        # out means through the script's last stage: the accumulator only runs once a
+        # run has finished, so counting it would show a failed run as zero out
+        "AND rs.position = (SELECT MAX(r.position) FROM run_stages r "
+        "  JOIN stage_versions v ON v.id = r.stage_version_id "
+        "  WHERE r.run_id = ? AND v.kind != 'accumulator')",
         (run_id, run_id),
     ).fetchone()[0]
     return counts

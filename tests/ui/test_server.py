@@ -96,6 +96,15 @@ def test_a_record_trace_is_served(base_url: str) -> None:
     assert trace["events"][3]["stage_name"] == "parse_amount"
 
 
+def test_a_run_s_files_are_served(base_url: str) -> None:
+    kept = get(base_url, "/api/runs/1/files/input")
+
+    assert (kept["role"], kept["format"]) == ("input", "csv")
+    assert kept["content"].startswith("Order ID,Email,Amount")
+    # the fixture's runs write no output, so none was kept
+    assert get_error(base_url, "/api/runs/1/files/output")[0] == 400
+
+
 def test_field_statistics_are_served(base_url: str) -> None:
     fields = get(base_url, "/api/runs/1/stages/3/fields")
 

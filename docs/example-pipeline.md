@@ -23,6 +23,7 @@ A small, real pipeline lives in [`examples/`](../examples). It exists to be read
 | 6 | `parse_line_items` | Turns `"widget x2; gadget x1"` into a nested list of `{"sku", "quantity"}` objects |
 | 7 | `nest_the_customer` | Moves the email into a nested `customer` object beside its domain |
 | 8 | `to_csv_text` | Returns CSV text, a header and one row, instead of a dictionary; nested fields become JSON inside it |
+| 9 | `write_csv` | The accumulator, present when `--output` is given: each record in, the CSV row it was written as out |
 
 Two things in there are worth noticing. The stage at position 2 is registered as `drop_internal_test_orders` through `@stage(name=...)` while the function is called `drop_test_rows`, which is how a stage gets a name that reads well in the UI. `to_csv_text` shows that a stage may return text: the UI highlights it as CSV, and the CSV writer reads it back into rows. And `dedupe_by_id` holds state between records, which Squeegee allows but which makes the result depend on the order records arrive in.
 
@@ -143,12 +144,14 @@ Everything else is an ordinary stage:
 
 | Position | Stage | What it does |
 | --- | --- | --- |
-| 0 | `drop_the_title` | Returns `None` for the one block that does not begin with a date |
-| 1 | `split_the_date_from_the_body` | Separates the leading date from the entry, collapsing the whitespace an entry spanning blank lines carries |
-| 2 | `parse_the_date` | `01/01`, `11/17/22` and `11/21/2022` all become an ISO date |
-| 3 | `collect_the_quotes` | Pulls out each quoted passage; an entry written without quote marks keeps its whole body as one passage |
-| 4 | `attribute_each_quote` | Tidies the attribution that follows each closing quote |
-| 5 | `classify_each_quote` | Asks [Jev](https://docs.typesafe.ai) which kind of work each quote came from: film, TV, music, book, anime, a real person, or other |
+| 0 | `read_blocks` | Stage zero: the registered reader, one record per dated block |
+| 1 | `drop_the_title` | Returns `None` for the one block that does not begin with a date |
+| 2 | `split_the_date_from_the_body` | Separates the leading date from the entry, collapsing spacing within a line but keeping a poem's line breaks |
+| 3 | `parse_the_date` | `01/01`, `11/17/22` and `11/21/2022` all become an ISO date |
+| 4 | `collect_the_quotes` | Pulls out each quoted passage; an entry written without quote marks keeps its whole body as one passage |
+| 5 | `attribute_each_quote` | Tidies the attribution that follows each closing quote |
+| 6 | `classify_each_quote` | Asks [Jev](https://docs.typesafe.ai) which kind of work each quote came from: film, TV, music, book, anime, a real person, or other |
+| 7 | `write_json` | The accumulator, present when `--output` is given: each record in, the JSON element it was written as out |
 
 The last stage calls TypeSafe's hosted classifier once per quote, so the run needs `TYPESAFE_API_KEY` in the environment. Every entry in the file is a quote, so classifying "quote or word" would say nothing; the medium is the split worth having. The answer's `confidence` is kept next to the choice, so a low-confidence call is visible in the run rather than hidden in the output. The test replaces the network call with a fixed answer.
 
@@ -157,10 +160,8 @@ TYPESAFE_API_KEY=... squeegee run examples/words_2022.py --input examples/words-
 ```
 
 ```
-run 1 finished: 38 in, 37 out, 1 dropped, 0 errored, 0.03s
+run 1 finished: 38 in, 37 out, 1 dropped, 0 errored, 5.30s
 recorded in /tmp/squeegee-words.db
 ```
 
-The timing above predates the classifier; expect a few seconds more for thirty-eight calls.
-
-Thirty-eight blocks in, because the title is a record of its own, and thirty-seven dated entries out. The output is JSON rather than CSV: a record holds a list of quotes, and the CSV writer would flatten it into a string.
+Thirty-eight blocks in, because the title is a record of its own, and thirty-seven dated entries out, holding thirty-eight quotes, so the classifier is called thirty-eight times. Most of the five seconds is those calls. A few answers come back with low confidence, such as `person` at 0.27 for a quote attributed to Marisa Tomei. Each confidence sits beside its choice in the stage's output, so the trace shows which calls to doubt. The output is JSON rather than CSV: a record holds a list of quotes, and the CSV writer would flatten it into a string.

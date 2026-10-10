@@ -49,7 +49,7 @@ erDiagram
         text    description
         text    input_type "null when unannotated"
         text    output_type "null when unannotated"
-        text    kind "source | map"
+        text    kind "source | map | accumulator"
         text    input_format "csv | json | null"
         text    first_seen_at
     }
@@ -124,7 +124,7 @@ CREATE TABLE stage_versions (
     description   TEXT,
     input_type    TEXT,                          -- annotation as text, NULL when the user did not annotate
     output_type   TEXT,
-    kind          TEXT NOT NULL CHECK (kind IN ('source', 'map')),  -- source is the reader, stage zero
+    kind          TEXT NOT NULL CHECK (kind IN ('source', 'map', 'accumulator')),  -- reader, script stage, or writer
     input_format  TEXT,                          -- how the UI highlights raw inputs; NULL means infer
     first_seen_at TEXT NOT NULL,
     UNIQUE (name, source_sha256)
@@ -157,6 +157,16 @@ CREATE TABLE record_events (
     error_type    TEXT,
     error_message TEXT,
     duration_us   INTEGER NOT NULL
+);
+
+CREATE TABLE run_files (
+    id       INTEGER PRIMARY KEY,
+    run_id   INTEGER NOT NULL REFERENCES runs(id),
+    role     TEXT    NOT NULL CHECK (role IN ('script', 'input', 'output')),
+    path     TEXT    NOT NULL,
+    format   TEXT,                               -- csv or json where known, NULL to infer
+    content  TEXT    NOT NULL,                   -- kept so a run is reviewable after the file changes
+    UNIQUE (run_id, role)
 );
 
 CREATE INDEX idx_records_run       ON records (run_id, record_index);

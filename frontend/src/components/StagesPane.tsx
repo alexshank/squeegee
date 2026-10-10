@@ -1,9 +1,9 @@
-import { Code } from "lucide-react";
+import { Code, FileCode, FileInput, FileOutput } from "lucide-react";
 import { useState } from "react";
-import type { FieldStats, StageSummary } from "../api";
+import type { FieldStats, FileRole, StageSummary } from "../api";
 import { Counts } from "./Counts";
 import { Splitter } from "./Splitter";
-import { Empty, PaneHeading } from "./shared";
+import { Empty, PaneHeading, clamp, outlineButton } from "./shared";
 
 interface Props {
   stages: StageSummary[];
@@ -13,15 +13,37 @@ interface Props {
   onStage: (position: number) => void;
   onField: (field: string | null) => void;
   onSource: (position: number) => void;
+  onFile: (role: FileRole) => void;
 }
 
 /** The pipeline in declaration order, and the fields the chosen stage produced. */
-export function StagesPane({ stages, position, fields, field, onStage, onField, onSource }: Props) {
-  const [height, setHeight] = useState(320);
+export function StagesPane(props: Props) {
+  const { stages, position, fields, field, onStage, onField, onSource, onFile } = props;
+  // the page header takes roughly the first hundred pixels, so this puts the
+  // split between stages and fields about halfway down the window
+  const [height, setHeight] = useState(() => clamp(window.innerHeight / 2 - 100));
   return (
     <aside style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
       <div style={{ height, flexShrink: 0, overflowY: "auto" }}>
-        <PaneHeading>stages</PaneHeading>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            paddingRight: "0.5rem",
+          }}
+        >
+          <PaneHeading>stages</PaneHeading>
+          <button
+            type="button"
+            onClick={() => onFile("script")}
+            aria-label="script file"
+            style={{ ...outlineButton, display: "flex", alignItems: "center", gap: "0.3rem" }}
+          >
+            <FileCode size={13} aria-hidden />
+            script
+          </button>
+        </div>
         <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
           {stages.map((stage) => (
             <li key={stage.position} style={{ display: "flex", alignItems: "flex-start" }}>
@@ -46,31 +68,29 @@ export function StagesPane({ stages, position, fields, field, onStage, onField, 
                   )}
                 </small>
               </button>
-              {/* a sibling of the row rather than a child, because reading a
-                stage's code is not the same as selecting that stage */}
-              <button
-                type="button"
+              {/* siblings of the row rather than children, because reading a
+                stage's code or file is not the same as selecting that stage */}
+              {stage.kind === "source" && (
+                <IconButton label="input file" onClick={() => onFile("input")}>
+                  <FileInput size={13} aria-hidden />
+                </IconButton>
+              )}
+              {stage.kind === "accumulator" && (
+                <IconButton label="output file" onClick={() => onFile("output")}>
+                  <FileOutput size={13} aria-hidden />
+                </IconButton>
+              )}
+              <IconButton
+                label={`source of ${stage.position} ${stage.name}`}
                 onClick={() => onSource(stage.position)}
-                aria-label={`source of ${stage.position} ${stage.name}`}
-                title={`source of ${stage.name}`}
-                style={{
-                  background: "none",
-                  border: 0,
-                  color: "var(--muted)",
-                  cursor: "pointer",
-                  // matches the row's top padding, so the icon sits on the name's line
-                  padding: "0.5rem 0.5rem",
-                  // a long stage name wraps; the icon must not be squeezed away
-                  flexShrink: 0,
-                }}
               >
                 <Code size={13} aria-hidden />
-              </button>
+              </IconButton>
             </li>
           ))}
         </ul>
       </div>
-      <Splitter axis="y" onDrag={(delta) => setHeight((size) => Math.max(120, size + delta))} />
+      <Splitter axis="y" onDrag={(delta) => setHeight((size) => clamp(size + delta))} />
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto", paddingTop: "0.5rem" }}>
         <PaneHeading>fields</PaneHeading>
         {fields.length === 0 && <Empty>no output to measure</Empty>}
@@ -94,6 +114,37 @@ export function StagesPane({ stages, position, fields, field, onStage, onField, 
         </ul>
       </div>
     </aside>
+  );
+}
+
+function IconButton({
+  label,
+  onClick,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      style={{
+        background: "none",
+        border: 0,
+        color: "var(--muted)",
+        cursor: "pointer",
+        // matches the row's top padding, so the icon sits on the name's line
+        padding: "0.5rem 0.4rem",
+        // a long stage name wraps; the icon must not be squeezed away
+        flexShrink: 0,
+      }}
+    >
+      {children}
+    </button>
   );
 }
 

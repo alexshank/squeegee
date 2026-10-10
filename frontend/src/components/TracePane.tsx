@@ -2,7 +2,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Trace } from "../api";
 import { JsonValue } from "./JsonValue";
 import { StatusPill } from "./StatusPill";
-import { Empty, Label, PaneHeading, outlineButton } from "./shared";
+import { Empty, Label, PaneHeading, formatDuration, outlineButton } from "./shared";
 
 interface Props {
   trace: Trace | null;
@@ -71,7 +71,7 @@ export function TracePane({ trace, loading, error, onRecord }: Props) {
             <span style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
               <StatusPill status={event.status} />
               <small style={{ color: "var(--muted)", fontFamily: "var(--mono)" }}>
-                {event.duration_us}µs
+                {formatDuration(event.duration_us)}
               </small>
             </span>
           </header>

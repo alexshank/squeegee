@@ -19,7 +19,8 @@ export const THEME: PrismTheme = {
 interface Props {
   source: string;
   name: string;
-  sha: string;
+  // a script file has no stage version, so no hash to show
+  sha?: string;
 }
 
 /** The stage's source exactly as it ran: monospace, highlighted, line numbered. */
@@ -42,9 +43,7 @@ export function StageSource({ source, name, sha }: Props) {
           color: "var(--muted)",
         }}
       >
-        <span>
-          {name} · {sha.slice(0, 8)}
-        </span>
+        <span>{sha ? `${name} · ${sha.slice(0, 8)}` : name}</span>
         <button
           type="button"
           onClick={() => {

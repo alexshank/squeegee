@@ -1,15 +1,17 @@
 import { AlertTriangle } from "lucide-react";
-import { useRef, useState } from "react";
-import { type Status, api } from "./api";
+import { useState } from "react";
+import { type FileRole, type Status, api } from "./api";
 import { Counts } from "./components/Counts";
 import { FieldPanel } from "./components/FieldPanel";
+import { FileModal } from "./components/FileModal";
 import { RecordIoPane } from "./components/RecordIoPane";
 import { RecordsPane } from "./components/RecordsPane";
 import { SourceModal } from "./components/SourceModal";
 import { Splitter } from "./components/Splitter";
 import { StagesPane } from "./components/StagesPane";
 import { TracePane } from "./components/TracePane";
-import { integerParam, statusParam } from "./params";
+import { clamp } from "./components/shared";
+import { fileParam, integerParam, statusParam } from "./params";
 import { back, useParamSetter } from "./router";
 import { useApi } from "./useApi";
 import { useRecords } from "./useRecords";
@@ -41,6 +43,7 @@ export function RunView({ runId, params }: Props) {
   const field = params.get("field");
   const recordIndex = integerParam(params, "record");
   const sourcePosition = integerParam(params, "source");
+  const fileRole = fileParam(params);
 
   const run = useApi(() => api.run(runId), [runId]);
   const fields = useApi(() => api.fields(runId, position), [runId, position]);
@@ -66,18 +69,16 @@ export function RunView({ runId, params }: Props) {
   // useApi keeps the last good value visible while the next one loads, so both
   // panes must ignore a trace that is still the record selected before this one
   const current = trace.data?.record_index === recordIndex ? trace.data : null;
-  // closing walks the history back when opening pushed onto it, so a shared
-  // link that arrives with the modal open does not gain an entry to walk
-  const pushedSource = useRef(false);
   const [left, setLeft] = useState(300);
   const [right, setRight] = useState(420);
   const [bottom, setBottom] = useState(320);
-  // no pane may be dragged shut, or its handle would be lost with it
-  const clamp = (size: number) => Math.max(120, size);
 
-  function openSource(next: number) {
-    pushedSource.current = true;
-    setParams({ source: String(next) });
+  // the entry opening pushes is marked in its history state, so closing walks back
+  // over exactly that entry, even after Back and Forward, while a shared link that
+  // arrives with a modal open has no such entry and is replaced instead
+  function openModal(updates: { source: string | null; file: FileRole | null }) {
+    setParams(updates);
+    window.history.replaceState({ modal: true }, "");
   }
 
   // the filter applies at once; the record follows once the server says whether
@@ -104,14 +105,13 @@ export function RunView({ runId, params }: Props) {
     }
   }
 
-  function closeSource() {
+  function closeModal() {
     // replacing instead would leave an entry identical to the one before it,
     // and Back would look broken
-    if (pushedSource.current) {
-      pushedSource.current = false;
+    if (window.history.state?.modal) {
       back();
     } else {
-      setParams({ source: null }, true);
+      setParams({ source: null, file: null }, true);
     }
   }
 
@@ -191,7 +191,8 @@ export function RunView({ runId, params }: Props) {
           field={field}
           onStage={(next) => setParams({ stage: String(next), field: null })}
           onField={(next) => setParams({ field: next })}
-          onSource={(next) => openSource(next)}
+          onSource={(next) => openModal({ source: String(next), file: null })}
+          onFile={(role) => openModal({ source: null, file: role })}
         />
         <Splitter axis="x" onDrag={(delta) => setLeft((size) => clamp(size + delta))} />
         <div style={{ display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
@@ -217,7 +218,7 @@ export function RunView({ runId, params }: Props) {
               error={trace.error}
               position={position}
               recordIndex={recordIndex}
-              onSource={(next) => openSource(next)}
+              onSource={(next) => openModal({ source: String(next), file: null })}
             />
             {fieldDetail.data && <FieldPanel detail={fieldDetail.data} />}
           </div>
@@ -231,7 +232,11 @@ export function RunView({ runId, params }: Props) {
         />
       </div>
       {sourcePosition !== null && (
-        <SourceModal runId={runId} position={sourcePosition} onClose={closeSource} />
+        <SourceModal runId={runId} position={sourcePosition} onClose={closeModal} />
+      )}
+      {/* only a hand-edited link can ask for both, and one modal at a time is all a page shows */}
+      {fileRole !== null && sourcePosition === null && (
+        <FileModal runId={runId} role={fileRole} onClose={closeModal} />
       )}
     </>
   );

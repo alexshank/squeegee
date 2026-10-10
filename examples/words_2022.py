@@ -52,9 +52,10 @@ def drop_the_title(record):
 @stage
 def split_the_date_from_the_body(record):
     """Separate the leading date from the text of the entry."""
-    month, day, year, body = DATE_AND_BODY.match(record["text"]).groups()
+    month, day, year, body = DATE_AND_BODY.match(record.pop("text")).groups()
     record["date_text"] = "/".join(part for part in (month, day, year) if part)
-    record["body"] = " ".join(body.split())
+    # spacing inside a line is noise, but a line break is part of a poem
+    record["body"] = "\n".join(" ".join(line.split()) for line in body.splitlines() if line.strip())
     return record
 
 

@@ -364,3 +364,27 @@ def test_a_run_still_in_progress_has_no_duration(tmp_path: Path) -> None:
 
 def test_a_stage_returning_text_has_no_fields_to_measure(database: Path) -> None:
     assert queries.stage_fields(database, 1, 8)["items"] == []
+
+
+def test_a_failed_run_with_an_output_still_counts_what_reached_the_last_stage(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "squeegee.db"
+    clear_registry()
+    main(
+        [
+            "run",
+            str(EXAMPLES / "clean_orders.py"),
+            "--input",
+            str(EXAMPLES / "orders_with_a_bad_row.csv"),
+            "--output",
+            str(tmp_path / "clean.csv"),
+            "--db",
+            str(database),
+            "--quiet",
+        ]
+    )
+    clear_registry()
+
+    # the accumulator never ran, so it must not be what "out" counts
+    assert queries.run_summary(database, 1)["records_out"] == 4

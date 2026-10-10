@@ -35,28 +35,41 @@ def read_csv(path: Path) -> Iterator[tuple[str, Record]]:
             consumed.clear()
 
 
-def write(path: Path, records: Iterable[Record | str]) -> int:
-    """Write records as CSV, taking the column set from the first, and count the rows.
+def write_csv(path: Path, records: Iterable[Record | str]) -> Iterator[str]:
+    """One CSV row per record under a header taken from the first, yielding each as written.
 
     A record may also be CSV text with its own header, as a stage that renders
     CSV returns, which is read back into rows rather than written verbatim.
     """
+    fieldnames: list[str] = []
+    header = ""
     written = 0
     with path.open("w", newline="", encoding="utf-8") as handle:
-        writer: csv.DictWriter[str] | None = None
-        for record in (row for given in records for row in _rows(given)):
-            if writer is None:
-                writer = csv.DictWriter(handle, fieldnames=list(record))
-                writer.writeheader()
-            elif set(record) != set(writer.fieldnames):
-                # writing anyway would silently drop the columns the header lacks
-                raise FormatError(
-                    f"row {written} has fields {sorted(record)}, but the CSV header is "
-                    f"{sorted(writer.fieldnames)}; every record must have the same fields"
-                )
-            writer.writerow(record)
-            written += 1
-    return written
+        for record in records:
+            rows = _rows(record)
+            if not header:
+                fieldnames = list(rows[0])
+                # a header is the row whose values are its own names
+                header = _csv_text(fieldnames, [dict(zip(fieldnames, fieldnames, strict=True))])
+                handle.write(header)
+            for row in rows:
+                if set(row) != set(fieldnames):
+                    # writing anyway would silently drop the columns the header lacks
+                    raise FormatError(
+                        f"row {written} has fields {sorted(row)}, but the CSV header is "
+                        f"{sorted(fieldnames)}; every record must have the same fields"
+                    )
+                written += 1
+            body = _csv_text(fieldnames, rows)
+            handle.write(body)
+            # like a read row, a written one carries the header, so it reads on its own
+            yield (header + body).rstrip("\r\n")
+
+
+def _csv_text(fieldnames: list[str], rows: list[Record]) -> str:
+    text = io.StringIO()
+    csv.DictWriter(text, fieldnames=fieldnames).writerows(rows)
+    return text.getvalue()
 
 
 def _rows(record: Record | str) -> list[Record]:

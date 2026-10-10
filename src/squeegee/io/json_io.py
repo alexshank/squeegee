@@ -32,21 +32,25 @@ def read_json(path: Path) -> Iterator[tuple[str, Record]]:
                 yield line.strip(), _object_from(line, path, number)
 
 
-def write_array(path: Path, records: Iterable[Record]) -> int:
-    """Write records as one JSON array."""
-    materialized = list(records)
-    path.write_text(json.dumps(materialized, indent=2) + "\n", encoding="utf-8")
-    return len(materialized)
+def write_json(path: Path, records: Iterable[Record]) -> Iterator[str]:
+    """One element of a JSON array per record, yielding each as written."""
+    with path.open("w", encoding="utf-8") as handle:
+        handle.write("[")
+        for number, record in enumerate(records):
+            element = json.dumps(record, indent=2, ensure_ascii=False)
+            # indented by hand, because the array is written one element at a time
+            handle.write(("," if number else "") + "\n  " + element.replace("\n", "\n  "))
+            yield element
+        handle.write("\n]\n")
 
 
-def write_lines(path: Path, records: Iterable[Record]) -> int:
-    """Write records as JSON Lines, one object per line."""
-    written = 0
+def write_json_lines(path: Path, records: Iterable[Record]) -> Iterator[str]:
+    """One JSON object per line per record, yielding each as written."""
     with path.open("w", encoding="utf-8") as handle:
         for record in records:
-            handle.write(json.dumps(record) + "\n")
-            written += 1
-    return written
+            line = json.dumps(record, ensure_ascii=False)
+            handle.write(line + "\n")
+            yield line
 
 
 def _starts_an_array(path: Path) -> bool:

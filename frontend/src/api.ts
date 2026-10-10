@@ -43,6 +43,7 @@ export interface StageSummary {
   position: number;
   name: string;
   description: string | null;
+  kind: "source" | "map" | "accumulator";
   records_in: number;
   records_ok: number;
   records_dropped: number;
@@ -128,6 +129,15 @@ export interface FieldDetail {
   before: Distribution | null;
 }
 
+export type FileRole = "script" | "input" | "output";
+
+export interface RunFile {
+  role: FileRole;
+  path: string;
+  format: string | null;
+  content: string;
+}
+
 export class ApiError extends Error {
   constructor(
     readonly code: string,
@@ -159,6 +169,7 @@ export const api = {
   runs: (params: { limit?: number; cursor?: string; script?: string } = {}) =>
     get<Page<RunListing>>("/runs", params),
   run: (runId: number) => get<Run>(`/runs/${runId}`),
+  file: (runId: number, role: FileRole) => get<RunFile>(`/runs/${runId}/files/${role}`),
   stages: (runId: number) => get<{ items: StageSummary[] }>(`/runs/${runId}/stages`),
   stage: (runId: number, position: number) => get<StageDetail>(`/runs/${runId}/stages/${position}`),
   stageRecords: (

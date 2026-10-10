@@ -45,3 +45,20 @@ export function Label({ children }: { children: string }) {
     </div>
   );
 }
+
+/** Elapsed time in whichever unit keeps it short: µs, ms, seconds, or minutes. */
+export function formatDuration(us: number): string {
+  if (us < 1_000) return `${us}µs`;
+  // the unit is chosen after rounding, so 999,950µs reads 1.00s rather than 1000.0ms
+  const ms = (us / 1_000).toFixed(1);
+  if (Number(ms) < 1_000) return `${ms}ms`;
+  const seconds = (us / 1_000_000).toFixed(2);
+  if (Number(seconds) < 60) return `${seconds}s`;
+  const whole = Math.round(us / 1_000_000);
+  return `${Math.floor(whole / 60)}m ${String(whole % 60).padStart(2, "0")}s`;
+}
+
+/** No pane may be dragged shut, or its handle would be lost with it. */
+export function clamp(size: number): number {
+  return Math.max(120, size);
+}
